@@ -1,7 +1,7 @@
 from interface import Interface
 from inspect import signature, _empty
 import json
-import re
+from datetime import datetime
 
 class Controller:
     def __init__(self, default_interface=True):
@@ -11,73 +11,54 @@ class Controller:
         self.interface = None
         if default_interface:
             self.interface = Interface()
-    def custom_interface(self, tools=False, variables=False):
+    def initalize_interface(self, variables=False, tools=False):
         additional_context = ""
         if variables:
             additional_context += '\n\n\nBelow is a JSON containing an array of variables and their datatypes. You may use these values when making function calls.\n'
             additional_context += self.__get_variables()
-            additional_context += '\n\n'
         if tools:
-            self.__bundle()
-            additional_context += '\nIf you do not think the user wants you to execute a command, ignore the remainder of this line and answer conversationally! Below is a JSON provided in Open-AIs tool declaration schema which denotes function calls you can make. If you believe the user wants you to make a function call, only output a json in the following syntax [{"function": "(function name)", "parameters": {{"(parameter name)": (parameter value)}}]. The parameters section can have multiple elements. Replace the parenthesis with values.\n'
-            #additional_context += "\nBelow is a JSON provided in Open-AIs tool declaration schema which denotes function calls you can make. If you believe the user wants you to make a function call, only output a json containing an array of maps containing the function name and a map of variable names to their value.\n"
-            additional_context += json.dumps(self.tools)
+            self.tools = self.__bundle()
         self.interface = Interface(additional_context)
     def prompt(self):
-        #message = self.interface.listen()
-        message = input("Prompt: ")
-        if message:
-            self.interface.fenceposting = True
-            # Get response
-            response = self.interface.prompt(message)
-            message = response.message.content
-
-            # Get think portion
-            think_start = message.find("<think>") + len("<think>")
-            think_end = message.find("</think>")
-            think = message[think_start:think_end] if think_start != -1 and think_end != -1 else ""
-
-            # Get chat portion
-            chat = message[think_end+len("</think>\n\n"):]
-
-            # check for commands to run here
-            found_json=False
-            try:
-                # Attempt to find and parse JSON within the chat string
-                json_start = chat.find("{")
-                json_end = chat.rfind("}") + 1
-                if json_start != -1 and json_end != -1:
-                    potential_json = chat[json_start:json_end]
-                    parsed_json = json.loads(potential_json)
-                    print("Captured JSON:", parsed_json)
-                    found_json=True
-                    self.interface.context.pop()
-            except json.JSONDecodeError:
-                print("Invalid JSON format found in chat.")
-                self.interface.say("Invalid JSON format found in chat.")
-            if not found_json:
-                print(chat)
-                self.interface.say(chat)
+        message = self.interface.listen(self.listen_duration, self.ambient_noise_timeout)
+        #message = input("Prompt: ")
+        if not message:
+            return
+        #self.interface.fenceposting = True
+        # Get response
+        response = self.interface.prompt(message, tools=self.tools)
+        if not response:
+            return
+        for choice in response.choices:
+            if choice.message.tool_calls:
+                for tool in choice.message.tool_calls:
+                    self.__call_tool(tool)
+            if choice.message.content:
+                print(response.choices[0].message.content)
+                self.interface.say(response.choices[0].message.content)
     def __get_variables(self):
         return f'[{{"name": "listen_duration","type": "NUMBER","value":{self.listen_duration}}},{{"name": "ambient_noise_timeout","type": "NUMBER","value": {self.ambient_noise_timeout}}}]'
-    def __translate_type(self, type: type):
-        if type in [int]:
-            return "integer"
-        elif type in [float]:
-            return "number"
-        elif type in [bool]:
-            return "boolean"
-        elif type in [list, tuple]:
-            return "array"
-        elif type in [str]:
-            return "string"
-        else:
-            return "object"
-
+    def __translate_types(self, type: type):
+        types = [x.strip() for x in str(type).split("|")]
+        type_list = []
+        for type in types:
+            if type in ['int']:
+                type_list.append({ "type": "integer" })
+            elif type in ['float']:
+                type_list.append({ "type": "number" })
+            elif type in ['bool']:
+                type_list.append({ "type": "boolean" })
+            elif type in ['list', 'tuple']:
+                type_list.append({ "type": "array" })
+            elif type in ['str']:
+                type_list.append({ "type": "string" })
+            else:
+                type_list.append({ "type": "object" })
+        return type_list
     def __bundle(self):
         if self.tools:
             self.tools
-        functions = [func for func in dir(self) if callable(getattr(self, func)) and '__' not in func and func not in ['prompt', 'custom_interface']]
+        functions = [func for func in dir(self) if callable(getattr(self, func)) and '__' not in func and func not in ['prompt', 'initalize_interface']]
         tools = []
         for func in functions:
             func_object = getattr(self, func)
@@ -94,17 +75,27 @@ class Controller:
                     'required': []
                 }
             }
-            var_desc = json.loads(func_object.__doc__.split("Variables:", 1)[1].strip())
-            for name, param in signature(func_object).parameters.items():
-                tool['function']['parameters']['properties'][name] = {
-                    'type': self.__translate_type(param.annotation),
-                    'description': var_desc[name]
-                }
-                if param.default is _empty:
-                    tool['function']['required'].append(name)
+            if len(signature(func_object).parameters) > 0:
+                var_desc = json.loads(func_object.__doc__.split("Variables:", 1)[1].strip())
+                for name, param in signature(func_object).parameters.items():
+                    tool['function']['parameters']['properties'][name] = {
+                        'anyOf': self.__translate_types(param.annotation),
+                        'description': var_desc[name]
+                    }
+                    if param.default is _empty:
+                        tool['function']['required'].append(name)
             tools.append(tool)
         self.tools = tools
         return self.tools
+    def __call_tool(self, tool_call):
+        try:
+            self.interface.context.pop()
+            args = json.loads(tool_call.function.arguments)
+            func = getattr(self, tool_call.function.name)
+            func(**args)
+        except:
+            print("Could not call function.")
+            self.interface.say("Could not call function.")
     def set_variable(self, var: str, value: any):
         """Sets the given variable to the given value.
         Variables:
@@ -116,14 +107,14 @@ class Controller:
         Variables:
         {"var":"The name of the variable."}
         """
-        getattr(self, var)
-    def add_variable(self, var: str, value: any):
+        self.interface.say(f"The value of {var} is {getattr(self, var)}.")
+    def add_variable(self, var: str, value: int|float):
         """Adds the {value} parameter to the given variable.
         Variables:
         {"var": "The name of the variable.","value":"The value to add."}
         """
         setattr(self, var, getattr(self,var) + value)
-    def subtract_variable(self, var: str, value: any):
+    def subtract_variable(self, var: str, value: int|float):
         """Subtracts the {value} parameter to the given variable.
         Variables:
         {"var": "The name of the variable.","value":"The value to subtract."}
@@ -141,3 +132,15 @@ class Controller:
         {"filename":"The name of the file to load the context from."}
         """
         self.interface.loadContext(filename)
+    def start_conversation(self):
+        """Sets the ai to enter conversation mode where it will not require a trigger phrase."""
+        self.interface.say("Starting conversation.")
+        self.interface.conversing=True
+    def stop_conversation(self):
+        """Sets the ai to leave conversation mode."""
+        self.interface.say("Ending conversation.")
+        self.interface.conversing=False
+    def get_time(self):
+        """Tells the current time."""
+        current_time = datetime.now().strftime("%H:%M:%S")
+        self.interface.say(f"The time is {current_time}.")
