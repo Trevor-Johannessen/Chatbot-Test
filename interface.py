@@ -3,7 +3,6 @@ from openai import OpenAI
 import pyttsx3
 import os
 import json 
-from itertools import chain
 
 
 class Interface:
@@ -14,16 +13,15 @@ class Interface:
         self.affirmations = ["yes", "yeah", "yep", "confirm", "affirmative", "correct", "accept"]
         self.quit_terms = ["cancel", "quit", "stop", "exit", "return"]
         self.context = []
+        self.names = ["monika", "monica"]
         self.client = OpenAI(
             api_key=os.environ.get("OPENAI_API_KEY"),
         )
         self.speech_engine = pyttsx3.init()
         self.initalizeContext(extra_context)
         self.say("Hello world.")
-
     def initalizeContext(self, extra_context=""):
-        self.context = [{"role": "system", "content": [{"type": "text", "text": f"You are a helpful assistant and program controller. Please try to be concise and keep responses to two sentences or less. {extra_context}"}]}]
-
+        self.context = [{"role": "system", "content": [{"type": "text", "text": f"You are {self.names[0]}, a helpful assistant and program controller. Please try to be concise and keep responses to two sentences or less. {extra_context}"}]}]
     def listen(self, listen_duration, ambient_noise_timeout):
         print("Listening")
         try:
@@ -41,40 +39,35 @@ class Interface:
                 elif "stop conversation" in text:
                     self.conversing = False
                     self.say("Stopping conversation.")
-                elif len(words) > 0 and (words[0] == 'monica'):
+                elif any(name in words for name in self.names):
                     self.standby = True
-                    text = text[len(words[0])+2:]
                 return text
         except Exception as e:
             print(f"Listen exception: {e}")
-            
     def prompt(self, message, tools=None):
         if not self.conversing and not self.standby:
             return
         if self.standby:
             self.standby = False
-
-        self.context += [{"role": "user", "content": [{"type": "text", "text": message}]}]
+        self.context.append({"role": "user", "content": [{"type": "text", "text": message}]})
         response = self.client.chat.completions.create(
             model="gpt-4o-mini",
             messages=self.context,
             tools=tools
         )
         return response
-    
     def say(self, message):
         if not message:
             return
+        print(f"Saying:\t{message}")
         self.speech_engine.say(message) 
         self.speech_engine.runAndWait()
-
     def loadContext(self, file):
         if not os.path.isfile(f"contexts/{file}"):
             self.say("This file does not exist.")
             return
         with open(f"contexts/{file}", "r") as file:
             self.context = json.loads(file.read())
-
     def saveContext(self, filename):
         if not filename:
             self.say("What would you like to save this context as?")
@@ -89,3 +82,9 @@ class Interface:
         with open(f"contexts/{filename}", "w+") as file:
             file.write(json.dumps(self.context))
         self.say("File saved.")
+    def add_context(self, new):
+        self.context.append(new)
+    def clear_context(self):
+        self.initalizeContext()
+    def clear_recent_context(self, i):
+        self.context = self.context[:-i]

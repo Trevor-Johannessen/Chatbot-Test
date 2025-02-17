@@ -2,6 +2,8 @@ from interface import Interface
 from inspect import signature, _empty
 import json
 from datetime import datetime
+from mcstatus import JavaServer
+import requests
 
 class Controller:
     def __init__(self, default_interface=True):
@@ -24,7 +26,6 @@ class Controller:
         #message = input("Prompt: ")
         if not message:
             return
-        #self.interface.fenceposting = True
         # Get response
         response = self.interface.prompt(message, tools=self.tools)
         if not response:
@@ -34,8 +35,8 @@ class Controller:
                 for tool in choice.message.tool_calls:
                     self.__call_tool(tool)
             if choice.message.content:
-                print(response.choices[0].message.content)
-                self.interface.say(response.choices[0].message.content)
+                self.interface.say(choice.message.content)
+                self.interface.add_context({"role": "assistant", "content": [{"type": "text", "text": choice.message.content}]})
     def __get_variables(self):
         return f'[{{"name": "listen_duration","type": "NUMBER","value":{self.listen_duration}}},{{"name": "ambient_noise_timeout","type": "NUMBER","value": {self.ambient_noise_timeout}}}]'
     def __translate_types(self, type: type):
@@ -89,7 +90,7 @@ class Controller:
         return self.tools
     def __call_tool(self, tool_call):
         try:
-            self.interface.context.pop()
+            self.interface.clear_recent_context(2)
             args = json.loads(tool_call.function.arguments)
             func = getattr(self, tool_call.function.name)
             func(**args)
@@ -132,8 +133,12 @@ class Controller:
         {"filename":"The name of the file to load the context from."}
         """
         self.interface.loadContext(filename)
+    def clear_context(self):
+        """Clears the current context window."""
+        self.interface.say("Clearing context.")
+        self.interface.clear_context()
     def start_conversation(self):
-        """Sets the ai to enter conversation mode where it will not require a trigger phrase."""
+        """Sets the ai to enter conversation mode where it will not require a trigger phrase. Only call this if the word conversation is explicitly said."""
         self.interface.say("Starting conversation.")
         self.interface.conversing=True
     def stop_conversation(self):
@@ -144,3 +149,47 @@ class Controller:
         """Tells the current time."""
         current_time = datetime.now().strftime("%H:%M:%S")
         self.interface.say(f"The time is {current_time}.")
+    def get_minecraft_status(self, list_players: bool = False): # should make this an enum for the function I want
+        """Gets the number of players or list of players currently on my minecraft server.
+        Variables:
+        {"list_players":"Respond with a list of online players instead of a number."}
+        """
+        server = JavaServer.lookup("mc.sector-alpha.net")
+        response = ""
+        try:
+            status = server.status()
+            player_count = status.players.online
+            player_list = [player.name for player in status.players.sample]
+            if status.players.online == 0:
+                response = "Nobody is online right now."
+            elif list_players and player_count == 1:
+                response = f"{player_list[0]} is currently online."
+            elif list_players:
+                response = ",\n".join(player_list) + " are currently online."
+            elif player_count == 1:
+                response = f"There is currently {player_count} person online."
+            else:
+                response = f"There are currently {player_count} people online."
+        except Exception as e:
+            print(e)
+            response = "The server is currently offline."
+        self.interface.say(response)
+    def change_volume(self, direction: str, delta: int = 1):
+        """Changes the volume of output audio.
+        Variables:
+        {"delta":"The amount to change the volume by.", "direction":"Direction of the volume. Should use the words 'increase' or 'decrease'."}
+        """
+        print(f"Direction = {direction}, Delta = {delta}")
+        if direction.lower() == "decrease":
+            endpoint = "volumedown"
+        elif direction.lower() == "increase":
+            endpoint = "volumeup"
+        else:
+            self.interface.say("A valid volume direction was not specified.")
+        try:
+            response = requests.get(f"http://192.168.1.102:8000/{endpoint}?magnitude={delta}")
+            if response.status_code != 200:
+                raise Exception("")
+        except requests.exceptions.RequestException as e:
+            self.interface.say(f"Could not adjust volume.")
+        
