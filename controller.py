@@ -279,4 +279,28 @@ class Controller:
             self.interface.say(f"Message sent.")
         except requests.exceptions.RequestException as e:
             self.interface.say(f"Could not send message.")
-        
+    def get_minecraft_status(self, list_players: bool = False): # should make this an enum for the function I want
+        """Gets the number of players or list of players currently on my minecraft server.
+        Variables:
+        {"list_players":"Respond with a list of online players instead of a number."}
+        """
+        server = JavaServer.lookup("mc.sector-alpha.net")
+        response = ""
+        try:
+            status = server.status()
+            player_count = status.players.online
+            player_list = [player.name for player in status.players.sample]
+            if status.players.online == 0:
+                response = "Nobody is online right now."
+            elif list_players and player_count == 1:
+                response = f"{player_list[0]} is currently online."
+            elif list_players:
+                response = ",\n".join(player_list) + " are currently online."
+            elif player_count == 1:
+                response = f"There is currently {player_count} person online."
+            else:
+                response = f"There are currently {player_count} people online."
+        except Exception as e:
+            print(e)
+            response = "The server is currently offline."
+        self.interface.say(response)
