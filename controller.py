@@ -166,6 +166,30 @@ class Controller:
                 raise Exception("")
         except requests.exceptions.RequestException as e:
             self.interface.say(f"Could not adjust volume.")
+    def next_song(self):
+        """Skips to the next song in the queue."""
+        try:
+            response = requests.get(f"http://192.168.1.102:8000/music/next")
+            if response.status_code != 200:
+                raise Exception("")
+        except requests.exceptions.RequestException as e:
+            self.interface.say(f"Could not skip song.")
+    def prev_song(self):
+        """Skips to the previous song in the queue."""
+        try:
+            response = requests.get(f"http://192.168.1.102:8000/music/prev")
+            if response.status_code != 200:
+                raise Exception("")
+        except requests.exceptions.RequestException as e:
+            self.interface.say(f"Could not skip song.")
+    def toggle_song(self):
+        """Pauses or plays the current song."""
+        try:
+            response = requests.get(f"http://192.168.1.102:8000/music/pause")
+            if response.status_code != 200:
+                raise Exception("")
+        except requests.exceptions.RequestException as e:
+            self.interface.say(f"Could not skip song.")
     def minecraft_kick_player(self, player: str = None, reason: str = ""): # should make this an enum for the function I want
         """Kicks a player off the minecraft server.
         Variables:
