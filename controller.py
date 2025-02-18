@@ -95,7 +95,6 @@ class Controller:
             func = getattr(self, tool_call.function.name)
             func(**args)
         except:
-            print("Could not call function.")
             self.interface.say("Could not call function.")
     def set_variable(self, var: str, value: any):
         """Sets the given variable to the given value.
@@ -149,31 +148,6 @@ class Controller:
         """Tells the current time."""
         current_time = datetime.now().strftime("%H:%M:%S")
         self.interface.say(f"The time is {current_time}.")
-    def get_minecraft_status(self, list_players: bool = False): # should make this an enum for the function I want
-        """Gets the number of players or list of players currently on my minecraft server.
-        Variables:
-        {"list_players":"Respond with a list of online players instead of a number."}
-        """
-        server = JavaServer.lookup("mc.sector-alpha.net")
-        response = ""
-        try:
-            status = server.status()
-            player_count = status.players.online
-            player_list = [player.name for player in status.players.sample]
-            if status.players.online == 0:
-                response = "Nobody is online right now."
-            elif list_players and player_count == 1:
-                response = f"{player_list[0]} is currently online."
-            elif list_players:
-                response = ",\n".join(player_list) + " are currently online."
-            elif player_count == 1:
-                response = f"There is currently {player_count} person online."
-            else:
-                response = f"There are currently {player_count} people online."
-        except Exception as e:
-            print(e)
-            response = "The server is currently offline."
-        self.interface.say(response)
     def change_volume(self, direction: str, delta: int = 1):
         """Changes the volume of output audio.
         Variables:
@@ -192,4 +166,93 @@ class Controller:
                 raise Exception("")
         except requests.exceptions.RequestException as e:
             self.interface.say(f"Could not adjust volume.")
+    def minecraft_kick_player(self, player: str = None, reason: str = ""): # should make this an enum for the function I want
+        """Kicks a player off the minecraft server.
+        Variables:
+        {"player":"The player to kick.", "reason":"A message explaining why the player was kicked."}
+        """
+        try:
+            if not player:
+                raise Exception("Failed to specify player.")
+            player=player.replace(" ", "")
+            response = requests.get(f"http://192.168.1.100:8889/minecraft/kick?player={player}&reason={reason}")
+            if response.status_code != 200:
+                raise Exception("Failed to kick player.")
+            self.interface.say(f"Kicked {player}.")
+        except requests.exceptions.RequestException as e:
+            self.interface.say(f"Could not kick player {player}.")
+    def minecraft_ban_player(self, player: str = None, reason: str = ""): # should make this an enum for the function I want
+        """Bans a player from the minecraft server.
+        Variables:
+        {"player":"The player to ban.", "reason":"A message explaining why the player was banned."}
+        """
+        try:
+            if not player:
+                raise Exception("Failed to specify player.")
+            player=player.replace(" ", "")
+            response = requests.get(f"http://192.168.1.100:8889/minecraft/ban?player={player}&reason={reason}")
+            if response.status_code != 200:
+                raise Exception("Failed to ban player.")
+            self.interface.say(f"Banned {player}.")
+        except requests.exceptions.RequestException as e:
+            self.interface.say(f"Could not ban player {player}.")
+    def minecraft_pardon_player(self, player: str = None): # should make this an enum for the function I want
+        """Pardons (unbans) a player on the minecraft server.
+        Variables:
+        {"player":"The player to pardon."}
+        """
+        try:
+            if not player:
+                raise Exception("Failed to specify player.")
+            player=player.replace(" ", "")
+            response = requests.get(f"http://192.168.1.100:8889/minecraft/pardon?player={player}")
+            if response.status_code != 200:
+                raise Exception("Failed to unban player.")
+            self.interface.say(f"Unbanned{player}.")
+        except requests.exceptions.RequestException as e:
+            self.interface.say(f"Could not unban player {player}.")
+    def minecraft_mute_player(self, player: str = None): # should make this an enum for the function I want
+        """Mutes a player on the minecraft server.
+        Variables:
+        {"player":"The player to mute."}
+        """
+        try:
+            if not player:
+                raise Exception("Failed to specify player.")
+            player=player.replace(" ", "")
+            response = requests.get(f"http://192.168.1.100:8889/minecraft/mute?player={player}")
+            if response.status_code != 200:
+                raise Exception("Failed to mute player.")
+            self.interface.say(f"Muted {player}.")
+        except requests.exceptions.RequestException as e:
+            self.interface.say(f"Could not mute player {player}.")
+    def minecraft_unmute_player(self, player: str = None): # should make this an enum for the function I want
+        """Unmutes a player on the minecraft server.
+        Variables:
+        {"player":"The player to unmute."}
+        """
+        try:
+            if not player:
+                raise Exception("Failed to specify player.")
+            player=player.replace(" ", "")
+            response = requests.get(f"http://192.168.1.100:8889/minecraft/unmute?player={player}")
+            if response.status_code != 200:
+                raise Exception("Failed to unmute player.")
+            self.interface.say(f"Unmuted {player}.")
+        except requests.exceptions.RequestException as e:
+            self.interface.say(f"Could not unmute player {player}.")
+    def minecraft_send_message(self, message: str = None): # should make this an enum for the function I want
+        """Sends a message to the minecraft server.
+        Variables:
+        {"message":"The message to send."}
+        """
+        try:
+            if not message:
+                raise Exception("Failed to specify message.")
+            response = requests.get(f"http://192.168.1.100:8889/minecraft/say?message={message}")
+            if response.status_code != 200:
+                raise Exception("Failed to send message.")
+            self.interface.say(f"Message sent.")
+        except requests.exceptions.RequestException as e:
+            self.interface.say(f"Could not send message.")
         
