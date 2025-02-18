@@ -289,7 +289,7 @@ class Controller:
         try:
             status = server.status()
             player_count = status.players.online
-            player_list = [player.name for player in status.players.sample]
+            player_list = [player.name for player in status.players.sample] if status.players.sample else []
             if status.players.online == 0:
                 response = "Nobody is online right now."
             elif list_players and player_count == 1:
