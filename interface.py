@@ -1,9 +1,11 @@
 import speech_recognition as sr
 from openai import OpenAI
-import pyttsx3
 import os
+import io
 import json 
-
+from elevenlabs import play, save
+from elevenlabs.client import ElevenLabs
+from datetime import datetime
 
 class Interface:
     def __init__(self, extra_context=""):
@@ -17,9 +19,11 @@ class Interface:
         self.client = OpenAI(
             api_key=os.environ.get("OPENAI_API_KEY"),
         )
-        self.speech_engine = pyttsx3.init()
+        self.voice = ElevenLabs(
+            api_key=os.environ.get("ELEVENLABS_API_KEY")
+        )
         self.initalizeContext(extra_context)
-        self.say("Hello world.")
+        self.say_canned("hello_world")
     def initalizeContext(self, extra_context=""):
         self.context = [{"role": "system", "content": [{"type": "text", "text": f"You are {self.names[0]}, a helpful assistant and program controller. Please try to be concise and keep responses to two sentences or less. {extra_context}"}]}]
     def listen(self, listen_duration, ambient_noise_timeout):
@@ -34,11 +38,11 @@ class Interface:
                 print(words)
                 if "start conversation" in text:
                     self.conversing = True
-                    self.say("Starting conversation.")
+                    self.say_canned("starting_conversation")
                     return
                 elif "stop conversation" in text:
                     self.conversing = False
-                    self.say("Stopping conversation.")
+                    self.say_canned("stopping_conversation")
                 elif any(name in words for name in self.names):
                     self.standby = True
                 return text
@@ -59,29 +63,46 @@ class Interface:
     def say(self, message):
         if not message:
             return
+        if isinstance(message, io.BufferedReader):
+            play(message)
+            return
         print(f"Saying:\t{message}")
-        self.speech_engine.say(message) 
-        self.speech_engine.runAndWait()
+        audio = self.voice.text_to_speech.convert(
+            text=message,
+            voice_id="0yy6aROli0UmPMyExQ1S",
+            model_id="eleven_multilingual_v2",
+            output_format="mp3_44100_128"
+        )
+        filename = f"./audio/history/{datetime.now()}.mp3"
+        save(audio, filename)
+        with open(filename, "rb") as speech:
+            play(speech)
+    def say_canned(self, name):
+        path=f"./audio/canned_lines/{name}.mp3"
+        if not os.path.isfile(path):
+            path="./audio/canned_lines/unknown_error.mp3"
+        with open(path, "rb") as line:
+            self.say(line)
     def loadContext(self, file):
         if not os.path.isfile(f"contexts/{file}"):
-            self.say("This file does not exist.")
+            self.say_canned("fail_not_exist")
             return
         with open(f"contexts/{file}", "r") as file:
             self.context = json.loads(file.read())
     def saveContext(self, filename):
         if not filename:
-            self.say("What would you like to save this context as?")
+            self.say_canned("save_context")
             filename = self.listen()
         if filename in self.quit_terms:
             return
         if os.path.isfile(f"contexts/{filename}"):
-            self.say("This file already exists. Replace it?")
+            self.say_canned("file_exists_replace")
             confirmation = self.listen()
             if confirmation not in self.affirmations:
                 return
         with open(f"contexts/{filename}", "w+") as file:
             file.write(json.dumps(self.context))
-        self.say("File saved.")
+        self.say_canned("file_saved")
     def add_context(self, new):
         self.context.append(new)
     def clear_context(self):
