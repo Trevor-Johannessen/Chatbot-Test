@@ -5,9 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-controller = Controller(default_interface=False)
-controller.initalize_interface(tools=True, variables=True)
-
+controller = Controller()
 while(True):
     controller.prompt()
     

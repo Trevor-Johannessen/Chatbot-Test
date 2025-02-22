@@ -8,24 +8,27 @@ from elevenlabs.client import ElevenLabs
 from datetime import datetime
 
 class Interface:
-    def __init__(self, extra_context=""):
+    def __init__(self, names: list = ["monika", "monica"], context=""):
+        if len(names) == 0:
+            raise "Interface Exception: Names needs at least one element."
+
         self.recognizer = sr.Recognizer() 
         self.conversing = False
         self.standby = False
         self.affirmations = ["yes", "yeah", "yep", "confirm", "affirmative", "correct", "accept"]
         self.quit_terms = ["cancel", "quit", "stop", "exit", "return"]
         self.context = []
-        self.names = ["monika", "monica"]
+        self.names = names
         self.client = OpenAI(
             api_key=os.environ.get("OPENAI_API_KEY"),
         )
         self.voice = ElevenLabs(
             api_key=os.environ.get("ELEVENLABS_API_KEY")
         )
-        self.initalizeContext(extra_context)
+        self.initalizeContext(context)
         self.say_canned("hello_world")
-    def initalizeContext(self, extra_context=""):
-        self.context = [{"role": "system", "content": [{"type": "text", "text": f"You are {self.names[0]}, a helpful assistant and program controller. Please try to be concise and keep responses to two sentences or less. {extra_context}"}]}]
+    def initalizeContext(self, context: str):
+        self.context = [{"role": "system", "content": [{"type": "text", "text": f"Your name is {self.names[0]}. {context}"}]}]
     def listen(self, listen_duration, ambient_noise_timeout):
         print("Listening")
         try:

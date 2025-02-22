@@ -1,0 +1,12 @@
+{
+    "names": ["monika", "monica"],
+    "listen_duration": 5,
+    "ambient_noise_timeout": 0.2,
+    "modules": [
+        "default",
+        "context",
+        "variables",
+        "media"
+    ],
+    "context": "You are an assistant and program controller. Speak to the client casually, as if they're a friend. Please try to be concise and keep responses to two sentences or less."
+}
