@@ -7,11 +7,12 @@ class Controller:
     def __init__(self):
         with open('config.json', 'r') as f:
             config = json.load(f)
-            self.names = config['names']
+            self.names = [name.lower() for name in config['names']]
             self.listen_duration = config['listen_duration']
             self.ambient_noise_timeout = config['ambient_noise_timeout']
-            self.modules = config['modules']
+            self.modules = [module.lower() for module in config['modules']]
             self.context = config['context']
+            self.mode = config['mode'].lower() if mode in config else "voice"
 
         if "default" not in self.modules:
             print("Warning: 'default' module not included in modules.")
@@ -32,8 +33,11 @@ class Controller:
         self.interface = Interface(names=self.names, context=self.context)
 
     def prompt(self):
-        message = self.interface.listen(self.listen_duration, self.ambient_noise_timeout)
-        #message = input("Prompt: ")
+        message=None
+        if self.mode == "text":
+            message = input("Prompt: ")
+        elif self.mode == "voice":
+            message = self.interface.listen(self.listen_duration, self.ambient_noise_timeout)
         if not message:
             return
         # Get response
@@ -45,7 +49,8 @@ class Controller:
                 for tool in choice.message.tool_calls:
                     self.__call_tool(tool)
             if choice.message.content:
-                self.interface.say(choice.message.content)
+                if self.mode == 'voice':
+                    self.interface.say(choice.message.content)
                 self.interface.add_context({"role": "assistant", "content": [{"type": "text", "text": choice.message.content}]})
     
     def __translate_types(self, type: type):

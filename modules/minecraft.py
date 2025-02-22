@@ -3,10 +3,9 @@ import os
 import requests
 
 class Minecraft():
-    def __init__(self):
-        super().__init__()
-        self.server_address = os.environ.get("MINECRAFT_SERVER_ADDR")
-        self.api_address = os.environ.get("MINECRAFT_API_ADDR")
+    def __init__(self, config):
+        self.server_address = config["minecraft_server_addr"]
+        self.api_address = config["minecraft_api_addr"]
         self.server = JavaServer.lookup(self.server_address)
 
     def minecraft_kick_player(self, player: str = None, reason: str = ""): # should make this an enum for the function I want
