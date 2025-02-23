@@ -3,14 +3,20 @@ from openai import OpenAI
 import os
 import io
 import json 
+from time import sleep
 from elevenlabs import play, save
 from elevenlabs.client import ElevenLabs
 from datetime import datetime
+from signal import signal, SIGINT, SIGTERM, SIGUSR1
 
 class Interface:
-    def __init__(self, names: list = ["monika", "monica"], context: str = "", history: str = "./", voice_id: str = "29vD33N1CtxCmqQRPOHJ"):
+    def __init__(self, names: list = ["monika", "monica"], mode: str = "voice", context_window: int = 5, context: str = "", history: str = "./", voice_id: str = "29vD33N1CtxCmqQRPOHJ"):
         if len(names) == 0:
             raise "Interface Exception: Names needs at least one element."
+        
+        timer_pid = os.fork()
+        if timer_pid == 0:  # Child process
+            self.__timer(context_window)
 
         self.recognizer = sr.Recognizer() 
         self.conversing = False
@@ -21,17 +27,25 @@ class Interface:
         self.names = names
         self.voice_id = voice_id
         self.history = history
+        self.mode = mode
+        self.last_message = datetime.now()
         self.client = OpenAI(
             api_key=os.environ.get("OPENAI_API_KEY"),
         )
         self.voice = ElevenLabs(
             api_key=os.environ.get("ELEVENLABS_API_KEY")
         )
+        signal(SIGUSR1, self.clear_context)
+        signal(SIGINT, self.terminate)
+        signal(SIGTERM, self.terminate)
         self.initalizeContext(context)
         self.say_canned("hello_world")
     def initalizeContext(self, context: str):
         self.context = [{"role": "system", "content": [{"type": "text", "text": f"Your name is {self.names[0]}. {context}"}]}]
     def listen(self, listen_duration, ambient_noise_timeout):
+        if self.mode == "text":
+            self.standby = True
+            return input("Prompt: ")
         print("Listening")
         try:
             with sr.Microphone() as source2:
@@ -69,9 +83,12 @@ class Interface:
         if not message:
             return
         if isinstance(message, io.BufferedReader):
-            play(message)
+            if self.mode == "voice":
+                play(message)
             return
         print(f"Saying:\t{message}")
+        if self.mode != "voice":
+            return
         audio = self.voice.text_to_speech.convert(
             text=message,
             voice_id=self.voice_id,
@@ -83,6 +100,7 @@ class Interface:
         with open(filename, "rb") as speech:
             play(speech)
     def say_canned(self, name):
+        print(f"Saying: {name}")
         path=f"./audio/canned_lines/{name}.mp3"
         if not os.path.isfile(path):
             path="./audio/canned_lines/unknown_error.mp3"
@@ -110,7 +128,14 @@ class Interface:
         self.say_canned("file_saved")
     def add_context(self, new):
         self.context.append(new)
-    def clear_context(self):
+    def clear_context(self, sig=None, frame=None):
         self.initalizeContext()
     def clear_recent_context(self, i):
         self.context = self.context[:-i]
+    def terminate(self, sig=None, frame=None):
+        self.say_canned("goodbye")
+        exit(1)
+    def __timer(self, window: int = 5):
+        while True:
+            sleep(window*60)
+            os.kill(os.getppid(), signal.SIGUSR1)

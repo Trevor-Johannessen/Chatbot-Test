@@ -30,14 +30,17 @@ class Controller:
                     self.context += f"{cls.__context()}\n\n"
                 self.classes.append(cls(config))
         self.tools = self.__bundle()
-        self.interface = Interface(names=self.names, context=self.context, history=config['voice_history_directory'], voice_id=config['voice_id'])
+        self.interface = Interface(
+            names=self.names,
+            context=self.context,
+            mode=self.mode,
+            context_window=config['context_window'],
+            history=config['voice_history_directory'],
+            voice_id=config['voice_id']
+        )
 
     def prompt(self):
-        message=None
-        if self.mode == "text":
-            message = input("Prompt: ")
-        elif self.mode == "voice":
-            message = self.interface.listen(self.listen_duration, self.ambient_noise_timeout)
+        message = self.interface.listen(self.listen_duration, self.ambient_noise_timeout)
         if not message:
             return
         # Get response
@@ -49,8 +52,7 @@ class Controller:
                 for tool in choice.message.tool_calls:
                     self.__call_tool(tool)
             if choice.message.content:
-                if self.mode == 'voice':
-                    self.interface.say(choice.message.content)
+                self.interface.say(choice.message.content)
                 self.interface.add_context({"role": "assistant", "content": [{"type": "text", "text": choice.message.content}]})
     
     def __translate_types(self, type: type):
