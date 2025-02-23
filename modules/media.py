@@ -1,7 +1,7 @@
 import requests
 
 class Media():
-    def __init__(self):
+    def __init__(self, config):
         pass
 
     def change_volume(self, direction: str, delta: int = 1):

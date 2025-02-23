@@ -1,5 +1,5 @@
 class Context():
-    def __init__(self):
+    def __init__(self, config):
         pass
 
     def save_context(self, filename: str):

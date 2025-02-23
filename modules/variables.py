@@ -1,5 +1,5 @@
 class Variables():
-    def __init__(self):
+    def __init__(self, config):
         pass
     
     def __context(self):

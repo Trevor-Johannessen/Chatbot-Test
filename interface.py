@@ -8,7 +8,7 @@ from elevenlabs.client import ElevenLabs
 from datetime import datetime
 
 class Interface:
-    def __init__(self, names: list = ["monika", "monica"], context=""):
+    def __init__(self, names: list = ["monika", "monica"], context: str = "", history: str = "./", voice_id: str = "29vD33N1CtxCmqQRPOHJ"):
         if len(names) == 0:
             raise "Interface Exception: Names needs at least one element."
 
@@ -19,6 +19,8 @@ class Interface:
         self.quit_terms = ["cancel", "quit", "stop", "exit", "return"]
         self.context = []
         self.names = names
+        self.voice_id = voice_id
+        self.history = history
         self.client = OpenAI(
             api_key=os.environ.get("OPENAI_API_KEY"),
         )
@@ -72,11 +74,11 @@ class Interface:
         print(f"Saying:\t{message}")
         audio = self.voice.text_to_speech.convert(
             text=message,
-            voice_id="0yy6aROli0UmPMyExQ1S",
+            voice_id=self.voice_id,
             model_id="eleven_multilingual_v2",
             output_format="mp3_44100_128"
         )
-        filename = f"./audio/history/{datetime.now()}.mp3"
+        filename = f"{self.history}/{datetime.now()}.mp3"
         save(audio, filename)
         with open(filename, "rb") as speech:
             play(speech)

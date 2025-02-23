@@ -12,7 +12,7 @@ class Controller:
             self.ambient_noise_timeout = config['ambient_noise_timeout']
             self.modules = [module.lower() for module in config['modules']]
             self.context = config['context']
-            self.mode = config['mode'].lower() if mode in config else "voice"
+            self.mode = config['mode'].lower() if 'mode' in config else "voice"
 
         if "default" not in self.modules:
             print("Warning: 'default' module not included in modules.")
@@ -28,9 +28,9 @@ class Controller:
                     continue
                 if hasattr(cls, '__context'):
                     self.context += f"{cls.__context()}\n\n"
-                self.classes.append(cls())
+                self.classes.append(cls(config))
         self.tools = self.__bundle()
-        self.interface = Interface(names=self.names, context=self.context)
+        self.interface = Interface(names=self.names, context=self.context, history=config['voice_history_directory'], voice_id=config['voice_id'])
 
     def prompt(self):
         message=None

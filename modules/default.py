@@ -1,7 +1,7 @@
 from datetime import datetime
 
 class Default():
-    def __init__(self):
+    def __init__(self, config):
         pass
 
     def test(self):
