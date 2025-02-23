@@ -28,6 +28,7 @@ class Interface:
         self.voice_id = voice_id
         self.history = history
         self.mode = mode
+        self.inital_context = context
         self.last_message = datetime.now()
         self.client = OpenAI(
             api_key=os.environ.get("OPENAI_API_KEY"),
@@ -38,10 +39,10 @@ class Interface:
         signal(SIGUSR1, self.clear_context)
         signal(SIGINT, self.terminate)
         signal(SIGTERM, self.terminate)
-        self.initalizeContext(context)
+        self.initalizeContext()
         self.say_canned("hello_world")
-    def initalizeContext(self, context: str):
-        self.context = [{"role": "system", "content": [{"type": "text", "text": f"Your name is {self.names[0]}. {context}"}]}]
+    def initalizeContext(self):
+        self.context = [{"role": "system", "content": [{"type": "text", "text": f"Your name is {self.names[0]}. {self.inital_context}"}]}]
     def listen(self, listen_duration, ambient_noise_timeout):
         if self.mode == "text":
             self.standby = True
@@ -135,7 +136,7 @@ class Interface:
     def terminate(self, sig=None, frame=None):
         self.say_canned("goodbye")
         exit(1)
-    def __timer(self, window: int = 5):
+    def __timer(self, window: float = 5):
         while True:
             sleep(window*60)
-            os.kill(os.getppid(), signal.SIGUSR1)
+            os.kill(os.getppid(), SIGUSR1)
