@@ -3,6 +3,7 @@ from openai import OpenAI
 import os
 import io
 import json 
+import shutil
 from time import sleep
 from elevenlabs import play, save
 from elevenlabs.client import ElevenLabs
@@ -97,10 +98,14 @@ class Interface:
             model_id="eleven_multilingual_v2",
             output_format="mp3_44100_128"
         )
-        filename = f"{self.history}/{datetime.now()}.mp3"
-        save(audio, filename)
-        with open(filename, "rb") as speech:
+        time = datetime.now()
+        temp_filename = f"./{time}.now"
+        filename = f"{self.history}/{time}.mp3"
+        save(audio, temp_filename)
+        with open(temp_filename, "rb") as speech:
             play(speech)
+        shutil.copy(temp_filename, filename)
+        os.remove(temp_filename)
     def say_canned(self, name):
         print(f"Saying: {name}")
         path=f"./audio/canned_lines/{name}.mp3"
