@@ -83,6 +83,7 @@ class Interface:
     def say(self, message):
         if not message:
             return
+        self.last_message = datetime.now()
         if isinstance(message, io.BufferedReader):
             if self.mode == "voice":
                 play(message)
