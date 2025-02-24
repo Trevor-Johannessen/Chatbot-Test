@@ -25,6 +25,7 @@ class Interface:
         self.affirmations = ["yes", "yeah", "yep", "confirm", "affirmative", "correct", "accept"]
         self.quit_terms = ["cancel", "quit", "stop", "exit", "return"]
         self.context = []
+        self.base_context = context
         self.names = names
         self.voice_id = voice_id
         self.history = history
@@ -40,10 +41,10 @@ class Interface:
         signal(SIGUSR1, self.clear_context)
         signal(SIGINT, self.terminate)
         signal(SIGTERM, self.terminate)
-        self.initalizeContext()
+        self.initalize_context(context)
         self.say_canned("hello_world")
-    def initalizeContext(self):
-        self.context = [{"role": "system", "content": [{"type": "text", "text": f"Your name is {self.names[0]}. {self.inital_context}"}]}]
+    def initalize_context(self, context):
+        self.context = [{"role": "system", "content": [{"type": "text", "text": f"Your name is {self.names[0]}. {context}"}]}]
     def listen(self, listen_duration, ambient_noise_timeout):
         if self.mode == "text":
             self.standby = True
@@ -99,7 +100,7 @@ class Interface:
             output_format="mp3_44100_128"
         )
         time = datetime.now()
-        temp_filename = f"./{time}.now"
+        temp_filename = f"./{time}.mp3"
         filename = f"{self.history}/{time}.mp3"
         save(audio, temp_filename)
         with open(temp_filename, "rb") as speech:
@@ -113,13 +114,13 @@ class Interface:
             path="./audio/canned_lines/unknown_error.mp3"
         with open(path, "rb") as line:
             self.say(line)
-    def loadContext(self, file):
+    def load_context(self, file):
         if not os.path.isfile(f"contexts/{file}"):
             self.say_canned("fail_not_exist")
             return
         with open(f"contexts/{file}", "r") as file:
             self.context = json.loads(file.read())
-    def saveContext(self, filename):
+    def save_context(self, filename):
         if not filename:
             self.say_canned("save_context")
             filename = self.listen()
@@ -136,7 +137,7 @@ class Interface:
     def add_context(self, new):
         self.context.append(new)
     def clear_context(self, sig=None, frame=None):
-        self.initalizeContext()
+        self.initalize_context(self.base_context)
     def clear_recent_context(self, i):
         self.context = self.context[:-i]
     def terminate(self, sig=None, frame=None):

@@ -4,7 +4,6 @@ class Variables():
     def __init__(self, interface, config):
         self.interface = interface
     
-    @staticmethod
     def context(config):
         variables = [
             {

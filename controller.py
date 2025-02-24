@@ -19,17 +19,6 @@ class Controller:
 
         self.context += "\n\n"
         self.classes = []
-        classes_to_instantiate = []
-        for module_name in self.modules:
-            module_name_literal = f"modules.{module_name}"
-            module = import_module(module_name_literal)
-            classes = getmembers(module, isclass)
-            for _, cls in classes:
-                if cls.__module__ != module_name_literal:
-                    continue
-                if hasattr(cls, 'context'):
-                    self.context += f"{cls.context(config)}\n\n"
-                classes_to_instantiate.append(cls)
         self.interface = Interface(
             names=self.names,
             context=self.context,
@@ -38,8 +27,17 @@ class Controller:
             history=config['voice_history_directory'],
             voice_id=config['voice_id']
         )
-        for cls in classes_to_instantiate:
-            self.classes.append(cls(self.interface, config))
+        for module_name in self.modules:
+            module_name_literal = f"modules.{module_name}"
+            module = import_module(module_name_literal)
+            classes = getmembers(module, isclass)
+            for _, cls in classes:
+                if cls.__module__ != module_name_literal:
+                    continue
+                self.classes.append(cls(self.interface, config))
+                if hasattr(cls, 'context'):
+                    self.context += f"{cls.context(config)}\n\n"
+        self.interface.initalize_context(self.context)
         self.tools = self.__bundle()
 
     def prompt(self):
