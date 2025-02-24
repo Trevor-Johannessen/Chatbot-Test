@@ -1,14 +1,24 @@
+import json
+
 class Variables():
     def __init__(self, interface, config):
         self.interface = interface
     
-    def __context(self):
-        additional_context = 'Below is a JSON containing an array of variables and their datatypes. You may use these values when making function calls.\n'
-        additional_context += self.__get_variables()
-        return additional_context
-
-    def __get_variables(self):
-        return f'[{{"name": "listen_duration","type": "NUMBER","value":{self.listen_duration}}},{{"name": "ambient_noise_timeout","type": "NUMBER","value": {self.ambient_noise_timeout}}}]'
+    @staticmethod
+    def context(config):
+        variables = [
+            {
+                "name": "listen_duration",
+                "type": "NUMBER",
+                "value": config['listen_duration']
+            },
+            {
+                "name": "ambient_noise_timeout",
+                "type": "NUMBER",
+                "value": config['ambient_noise_timeout']
+            }
+        ]
+        return f'Below is a JSON containing an array of variables and their datatypes. You may use these values when making function calls.\n{json.dumps(variables)}'
 
     def set_variable(self, var: str, value: any):
         """Sets the given variable to the given value."""

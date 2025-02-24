@@ -27,8 +27,8 @@ class Controller:
             for _, cls in classes:
                 if cls.__module__ != module_name_literal:
                     continue
-                if hasattr(cls, '__context'):
-                    self.context += f"{cls.__context()}\n\n"
+                if hasattr(cls, 'context'):
+                    self.context += f"{cls.context(config)}\n\n"
                 classes_to_instantiate.append(cls)
         self.interface = Interface(
             names=self.names,
@@ -80,7 +80,7 @@ class Controller:
         functions = []
         tools = []
         for cls in self.classes:
-            functions = [func for func in dir(cls) if callable(getattr(cls, func)) and '__' not in func]
+            functions = [func for func in dir(cls) if callable(getattr(cls, func)) and '__' not in func and func not in ['context']]
             for func in functions:
                 func_object = getattr(cls, func)
                 tool={
