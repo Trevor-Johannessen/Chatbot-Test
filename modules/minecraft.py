@@ -3,7 +3,8 @@ import os
 import requests
 
 class Minecraft():
-    def __init__(self, config):
+    def __init__(self, interface, config):
+        self.interface = interface
         self.server_address = config["minecraft_server_addr"]
         self.api_address = config["minecraft_api_addr"]
         self.server = JavaServer.lookup(self.server_address)

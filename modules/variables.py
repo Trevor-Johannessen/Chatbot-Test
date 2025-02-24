@@ -1,6 +1,6 @@
 class Variables():
-    def __init__(self, config):
-        pass
+    def __init__(self, interface, config):
+        self.interface = interface
     
     def __context(self):
         additional_context = 'Below is a JSON containing an array of variables and their datatypes. You may use these values when making function calls.\n'

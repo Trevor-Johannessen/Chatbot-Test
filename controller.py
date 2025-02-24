@@ -19,6 +19,7 @@ class Controller:
 
         self.context += "\n\n"
         self.classes = []
+        classes_to_instantiate = []
         for module_name in self.modules:
             module_name_literal = f"modules.{module_name}"
             module = import_module(module_name_literal)
@@ -28,8 +29,7 @@ class Controller:
                     continue
                 if hasattr(cls, '__context'):
                     self.context += f"{cls.__context()}\n\n"
-                self.classes.append(cls(config))
-        self.tools = self.__bundle()
+                classes_to_instantiate.append(cls)
         self.interface = Interface(
             names=self.names,
             context=self.context,
@@ -38,6 +38,9 @@ class Controller:
             history=config['voice_history_directory'],
             voice_id=config['voice_id']
         )
+        for cls in classes_to_instantiate:
+            self.classes.append(cls(self.interface, config))
+        self.tools = self.__bundle()
 
     def prompt(self):
         message = self.interface.listen(self.listen_duration, self.ambient_noise_timeout)
@@ -106,12 +109,13 @@ class Controller:
         return self.tools
     
     def __call_tool(self, tool_call):
-        try:
-            self.interface.clear_recent_context(2)
-            args = json.loads(tool_call.function.arguments)
-            func = getattr(self, tool_call.function.name)
-            func(**args)
-        except:
-            self.interface.say_canned("call_fail")
-            print(tool_call.function.name)
-            print(args)
+        self.interface.clear_recent_context(2)
+        args = json.loads(tool_call.function.arguments)
+        for cls in self.classes:
+            if hasattr(cls, tool_call.function.name):
+                func = getattr(cls, tool_call.function.name)
+                func(**args)
+                return
+        self.interface.say_canned("call_fail")
+        print(tool_call.function.name)
+        print(args)
