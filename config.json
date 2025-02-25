@@ -1,18 +1,22 @@
 {
     "names": ["monika", "monica"],
-    "mode": "text",
-    "voice_id": "29vD33N1CtxCmqQRPOHJ",
+    "type": "sentry",
+    "web_server_port": "8989",
+    "mode": "voice",
+    "voice_id": "0yy6aROli0UmPMyExQ1S",
     "voice_history_directory": "./audio/history",
+    "web_server_request_history_directory": "./audio/webserver/history",
     "listen_duration": 5,
     "ambient_noise_timeout": 0.2,
-    "context_window": 5,
+    "context_window": 1,
     "modules": [
         "default",
         "context",
         "variables",
-        "media"
+        "media",
+        "metadata"
     ],
-    "context": "You are an assistant and program controller. Speak to the client casually, as if they're a friend. Please try to be concise and keep responses to two sentences or less.",
+    "context": "You are an assistant and program controller. Speak to the client in friendly, casual manner. Do not acknowledge you are an AI. Please try to be concise and keep responses to two sentences or less.",
     "minecraft_server_addr": "",
     "minecraft_api_addr": ""
     

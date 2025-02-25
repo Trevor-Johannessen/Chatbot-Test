@@ -4,15 +4,14 @@ import json
 from importlib import import_module
 
 class Controller:
-    def __init__(self):
-        with open('config.json', 'r') as f:
-            config = json.load(f)
-            self.names = [name.lower() for name in config['names']]
-            self.listen_duration = config['listen_duration']
-            self.ambient_noise_timeout = config['ambient_noise_timeout']
-            self.modules = [module.lower() for module in config['modules']]
-            self.context = config['context']
-            self.mode = config['mode'].lower() if 'mode' in config else "voice"
+    def __init__(self, config):
+        
+        self.names = [name.lower() for name in config['names']]
+        self.listen_duration = config['listen_duration']
+        self.ambient_noise_timeout = config['ambient_noise_timeout']
+        self.modules = [module.lower() for module in config['modules']]
+        self.context = config['context']
+        self.mode = config['mode'].lower() if 'mode' in config else "voice"
 
         if "default" not in self.modules:
             print("Warning: 'default' module not included in modules.")
@@ -40,8 +39,8 @@ class Controller:
         self.interface.initalize_context(self.context)
         self.tools = self.__bundle()
 
-    def prompt(self):
-        message = self.interface.listen(self.listen_duration, self.ambient_noise_timeout)
+    def prompt(self, text=None, audio_file=None):
+        message = self.interface.listen(self.listen_duration, self.ambient_noise_timeout, text=text, audio_file=audio_file)
         if not message:
             return
         # Get response
@@ -53,9 +52,12 @@ class Controller:
                 for tool in choice.message.tool_calls:
                     self.__call_tool(tool)
             if choice.message.content:
-                self.interface.say(choice.message.content)
                 self.interface.add_context({"role": "assistant", "content": [{"type": "text", "text": choice.message.content}]})
-    
+                return choice.message.content
+            
+    def say(self, message):
+        self.interface.say(message)
+
     def __translate_types(self, type: type):
         types = [x.strip() for x in str(type).split("|")]
         type_list = []
