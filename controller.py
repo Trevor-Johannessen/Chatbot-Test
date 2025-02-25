@@ -40,7 +40,9 @@ class Controller:
         self.tools = self.__bundle()
 
     def prompt(self, text=None, audio_file=None):
-        message = self.interface.listen(self.listen_duration, self.ambient_noise_timeout, text=text, audio_file=audio_file)
+        if not text:
+            text = self.interface.get_input(self.listen_duration, self.ambient_noise_timeout, audio_file=audio_file)
+        message = self.interface.parse_text(text)
         if not message:
             return
         # Get response

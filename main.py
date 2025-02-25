@@ -1,4 +1,4 @@
-#!/root/chatbot/venv/bin/python
+#!/root/monika/venv/bin/python
 
 from controller import Controller
 from dotenv import load_dotenv

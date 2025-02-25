@@ -48,20 +48,34 @@ class Interface:
     def initalize_context(self, context):
         self._context = [{"role": "system", "content": [{"type": "text", "text": f"Your name is {self.names[0]}. {context}"}]}]
 
-    def listen(self, listen_duration, ambient_noise_timeout, text=None, audio_file=None):
-        if self.mode == "text" and text == None:
-            text = input("Prompt: ")
+    def get_input(self, listen_duration, ambient_noise_timeout, audio_file=None):
+        if self.mode == "voice" or audio_file:
+            return self.get_audio(listen_duration, ambient_noise_timeout, audio_file=audio_file)
+        elif self.mode == "text":
+            return self.get_text()
+        return None
+
+    def get_text(self):
+            return input("Prompt: ")
+
+    def get_audio(self, listen_duration, ambient_noise_timeout, audio_file=None):
+        text=None
+        if audio_file == None:
+            with sr.Microphone() as source:
+                self._recognizer.adjust_for_ambient_noise(source, duration=ambient_noise_timeout)
+                audio = self._recognizer.listen(source, phrase_time_limit=listen_duration)
+        elif audio_file:
+            audio = sr.AudioFile(audio_file)
+            with audio as source:
+                audio = self._recognizer.record(audio)
+        if audio:
+            text = self._recognizer.recognize_google(audio)
+        return text
+
+    def parse_text(self, text):
         try:
-            if text == None and audio_file == None:
-                with sr.Microphone() as source:
-                    self._recognizer.adjust_for_ambient_noise(source, duration=ambient_noise_timeout)
-                    audio = self._recognizer.listen(source, phrase_time_limit=listen_duration)
-            elif audio_file:
-                audio = sr.AudioFile(audio_file)
-                with audio as source:
-                    audio = self._recognizer.record(audio)
-            if audio:
-                text = self._recognizer.recognize_google(audio)
+            if text == None:
+                return
             text = text.lower()
             words = text.split(' ')
             print(words)
