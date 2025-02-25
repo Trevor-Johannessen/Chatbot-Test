@@ -9,7 +9,7 @@ The `config.json` file contains various settings that configure the behavior of 
 
 - **names**: An array of strings that specifies the names the AI assistant will respond to. Example: `["monika", "monica"]`.
 
-- **type**: A string that defines the type of AI assistant.
+- **type**: A list of strings that defines the type of AI assistants.
   - sentry: The AI will listen in the background and respond if it hears its name.
   - webserver: Sets up a web server which can be called by sending a POST request to the /prompt endpoint.
 

@@ -120,7 +120,7 @@ class Interface:
         print(f"Saying:\t{message}")
         if self.mode != "voice":
             return
-        audio = self.generate_voice(message)
+        audio, _ = self.generate_voice(message)
         play(audio)
 
     def say_canned(self, name):
@@ -165,7 +165,7 @@ class Interface:
     def terminate(self, sig=None, frame=None):
         self.say_canned("goodbye")
         exit(1)
-        
+
     def __timer(self, window: float = 5):
         while True:
             sleep(window*60)

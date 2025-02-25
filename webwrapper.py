@@ -32,18 +32,18 @@ class WebWrapper:
                 body = body.decode('utf-8')
                 response = self.controller.prompt(text=body)
             elif content_type in ["audio/mpeg", "audio/mp4", "audio/wav", "audio/x-wav"]:
-                audio_type = content_type[7:]
+                audio_type = content_type.split("/")[1]
                 if audio_type == 'mpeg':
-                    extension='.m4a'
+                    extension='mpeg'
                 elif audio_type =='mp4':
-                    extension='.mp3'
+                    extension='m4a'
                 elif audio_type in ['wav', 'x-wav']:
-                    extension='.wav'
+                    extension='wav'
                 with tempfile.NamedTemporaryFile(delete=False, suffix=extension) as temp_file:
                     temp_file.write(body)
                     temp_file_path = temp_file.name
                 audio = AudioSegment.from_file(temp_file_path, format=extension)
-                wav_temp_file_path = temp_file_path.replace(extension, ".wav")
+                wav_temp_file_path = temp_file_path.replace(extension, "wav")
                 audio.export(wav_temp_file_path, format="wav")
                 response = self.controller.prompt(audio_file=wav_temp_file_path)
                 shutil.move(wav_temp_file_path, f"{self.request_audio_history}/{datetime.now()}.wav")
