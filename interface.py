@@ -44,8 +44,10 @@ class Interface:
         signal(SIGTERM, self.terminate)
         self.initalize_context(context)
         self.say_canned("hello_world")
+
     def initalize_context(self, context):
         self._context = [{"role": "system", "content": [{"type": "text", "text": f"Your name is {self.names[0]}. {context}"}]}]
+
     def listen(self, listen_duration, ambient_noise_timeout, text=None, audio_file=None):
         if self.mode == "text" and text == None:
             text = input("Prompt: ")
@@ -75,6 +77,7 @@ class Interface:
             return text
         except Exception as e:
             print(f"Listen exception: {e}")
+
     def prompt(self, message, tools=None):
         if not self._conversing and not self._standby:
             return
@@ -87,6 +90,7 @@ class Interface:
             tools=tools
         )
         return response
+    
     def generate_voice(self, message):
         if message == None:
             return
@@ -126,12 +130,14 @@ class Interface:
             path="./audio/canned_lines/unknown_error.mp3"
         with open(path, "rb") as line:
             self.say(line)
+
     def load_context(self, file):
         if not os.path.isfile(f"contexts/{file}"):
             self.say_canned("fail_not_exist")
             return
         with open(f"contexts/{file}", "r") as file:
             self._context = json.loads(file.read())
+
     def save_context(self, filename):
         if not filename:
             self.say_canned("save_context")
@@ -146,15 +152,20 @@ class Interface:
         with open(f"contexts/{filename}", "w+") as file:
             file.write(json.dumps(self._context))
         self.say_canned("file_saved")
+
     def add_context(self, new):
         self._context.append(new)
+
     def clear_context(self, sig=None, frame=None):
         self.initalize_context(self.base_context)
+
     def clear_recent_context(self, i):
         self._context = self._context[:-i]
+
     def terminate(self, sig=None, frame=None):
         self.say_canned("goodbye")
         exit(1)
+        
     def __timer(self, window: float = 5):
         while True:
             sleep(window*60)

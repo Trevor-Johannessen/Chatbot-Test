@@ -54,6 +54,5 @@ class WebWrapper:
                 return FileResponse(filepath, media_type='audio/mpeg')
             else:
                 return "Unrecognized response type requested", 401
-
     def run(self):
         uvicorn.run(self._app, host=self._addr, port=self._port)
