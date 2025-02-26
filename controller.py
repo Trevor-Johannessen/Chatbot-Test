@@ -2,10 +2,14 @@ from interface import Interface
 from inspect import signature, _empty, getmembers, isclass
 import json
 from importlib import import_module
+from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 class Controller:
     def __init__(self, config):
-        
+        logging.basicConfig(filename=f"{config['log_directory']}/latest.log", level=logging.INFO)
         self.names = [name.lower() for name in config['names']]
         self.listen_duration = config['listen_duration']
         self.ambient_noise_timeout = config['ambient_noise_timeout']
@@ -14,11 +18,12 @@ class Controller:
         self.mode = config['mode'].lower() if 'mode' in config else "voice"
 
         if "default" not in self.modules:
-            print("Warning: 'default' module not included in modules.")
+            logger.warning("Warning: 'default' module not included in modules.")
 
         self.context += "\n\n"
         self.classes = []
         self.interface = Interface(
+            log_directory=config['log_directory'],
             names=self.names,
             context=self.context,
             mode=self.mode,
@@ -119,5 +124,4 @@ class Controller:
                 func(**args)
                 return
         self.interface.say_canned("call_fail")
-        print(tool_call.function.name)
-        print(args)
+        logger.error(f"Could not call function {tool_call.function.name} with args {args}")

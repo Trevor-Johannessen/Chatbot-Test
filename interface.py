@@ -10,10 +10,16 @@ from elevenlabs import play, save
 from elevenlabs.client import ElevenLabs
 from datetime import datetime
 from signal import signal, SIGINT, SIGTERM, SIGUSR1
+import logging
+
+logger = logging.getLogger(__name__)
 
 class Interface:
-    def __init__(self, names: list = ["monika", "monica"], mode: str = "voice", context_window: int = 5, context: str = "", history: str = "./", voice_id: str = "29vD33N1CtxCmqQRPOHJ"):
+    def __init__(self, log_directory: str, names: list = ["monika", "monica"], mode: str = "voice", context_window: int = 5, context: str = "", history: str = "./", voice_id: str = "29vD33N1CtxCmqQRPOHJ"):
+        logging.basicConfig(filename="f{log_directory}/latest.log", level=logging.INFO)
+
         if len(names) == 0:
+            logging.critical("Names need at least one element")
             raise "Interface Exception: Names needs at least one element."
         
         timer_pid = os.fork()
@@ -78,19 +84,21 @@ class Interface:
                 return
             text = text.lower()
             words = text.split(' ')
-            print(words)
+            logging.info(words)
             if "start conversation" in text:
+                logging.info("Starting conversation")
                 self._conversing = True
                 self.say_canned("starting_conversation")
                 return
             elif "stop conversation" in text:
+                logging.info("Stopping conversation")
                 self._conversing = False
                 self.say_canned("stopping_conversation")
             elif any(name in words for name in self.names):
                 self._standby = True
             return text
         except Exception as e:
-            print(f"Listen exception: {e}")
+            logging.error(f"Listening exception: {e}")
 
     def prompt(self, message, tools=None):
         if not self._conversing and not self._standby:
@@ -131,14 +139,14 @@ class Interface:
             if self.mode == "voice":
                 play(message)
             return
-        print(f"Saying:\t{message}")
+        logging.info(f"Saying: {message}")
         if self.mode != "voice":
             return
         audio, _ = self.generate_voice(message)
         play(audio)
 
     def say_canned(self, name):
-        print(f"Saying: {name}")
+        logging.info(f"Saying canned: {name}")
         path=f"./audio/canned_lines/{name}.mp3"
         if not os.path.isfile(path):
             path="./audio/canned_lines/unknown_error.mp3"
