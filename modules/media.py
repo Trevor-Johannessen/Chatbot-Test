@@ -1,8 +1,8 @@
 import requests
 
 class Media():
-    def __init__(self, interface, config):
-        self.interface = interface
+    def __init__(self, config):
+        self.interface = config['interface']
 
     def change_volume(self, direction: str, delta: int = 1):
         """Changes the volume of output audio."""

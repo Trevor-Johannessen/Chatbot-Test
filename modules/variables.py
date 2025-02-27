@@ -1,10 +1,10 @@
 import json
 
 class Variables():
-    def __init__(self, interface, config):
-        self.interface = interface
+    def __init__(self, config):
+        self.interface = config['interface']
     
-    def context(config):
+    def context(self, config):
         variables = [
             {
                 "name": "listen_duration",

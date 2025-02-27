@@ -1,6 +1,6 @@
 class Context():
-    def __init__(self, interface, config):
-        self.interface = interface
+    def __init__(self, config):
+        self.interface = config['interface']
 
     def save_context(self, filename: str):
         """Saves the current context as the given filename."""

@@ -1,8 +1,8 @@
 from datetime import datetime
 
 class Default():
-    def __init__(self, interface, config):
-        self.interface = interface
+    def __init__(self, config):
+        self.interface = config['interface']
 
     def test(self):
         """A test function for when the assistant is asked if they are online or if the client can be heard."""
