@@ -29,15 +29,14 @@ class Interface:
         self._recognizer = sr.Recognizer() 
         self._conversing = False
         self._standby = False
-        self._affirmations = ["yes", "yeah", "yep", "confirm", "affirmative", "correct", "accept"]
-        self._quit_terms = ["cancel", "quit", "stop", "exit", "return"]
+        self.affirmations = ["yes", "yeah", "yep", "confirm", "affirmative", "correct", "accept"]
+        self.quit_terms = ["cancel", "quit", "stop", "exit", "return", "no", "nope", "nada", "nah"]
         self._context = []
         self.base_context = context
         self.names = names
         self._voice_id = voice_id
         self._history = history
         self.mode = mode
-        self.inital_context = context
         self._last_message = datetime.now()
         self._client = OpenAI(
             api_key=os.environ.get("OPENAI_API_KEY"),
@@ -48,11 +47,16 @@ class Interface:
         signal(SIGUSR1, self.clear_context)
         signal(SIGINT, self.terminate)
         signal(SIGTERM, self.terminate)
-        self.initalize_context(context)
+        self.refresh_context(context)
         self.say_canned("hello_world")
 
-    def initalize_context(self, context):
-        self._context = [{"role": "system", "content": [{"type": "text", "text": f"Your name is {self.names[0]}. {context}"}]}]
+    def refresh_context(self, new_inital_context):
+        if self._context == None:
+            self._context = []
+        if len(self._context) > 0:
+            self._context[0] = {"role": "system", "content": [{"type": "text", "text": f"Your name is {self.names[0]}. {new_inital_context}"}]}
+        else:
+            self._context = [{"role": "system", "content": [{"type": "text", "text": f"Your name is {self.names[0]}. {new_inital_context}"}]}]
 
     def get_input(self, listen_duration, ambient_noise_timeout, audio_file=None):
         if self.mode == "voice" or audio_file:
@@ -100,6 +104,9 @@ class Interface:
         except Exception as e:
             logging.error(f"Listening exception: {e}")
 
+    def prime(self):
+        self._standby = True
+
     def prompt(self, message, tools=None):
         if not self._conversing and not self._standby:
             return
@@ -140,6 +147,7 @@ class Interface:
                 play(message)
             return
         logging.info(f"Saying: {message}")
+        print(f"Saying: {message}")
         if self.mode != "voice":
             return
         audio, _ = self.generate_voice(message)
@@ -179,9 +187,10 @@ class Interface:
         self._context.append(new)
 
     def clear_context(self, sig=None, frame=None):
-        self.initalize_context(self.base_context)
+        self._context = None
+        self.refresh_context(self.base_context)
 
-    def clear_recent_context(self, i):
+    def clear_recent_context(self, i=1):
         self._context = self._context[:-i]
 
     def terminate(self, sig=None, frame=None):
