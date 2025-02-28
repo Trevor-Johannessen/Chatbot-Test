@@ -1,6 +1,7 @@
 {
     "names": ["monika", "monica"],
-    "type": "sentry",
+    "type": ["sentry", "webserver"],
+    "log_directory": "./logs",
     "web_server_port": "8989",
     "mode": "voice",
     "voice_id": "0yy6aROli0UmPMyExQ1S",
@@ -9,14 +10,14 @@
     "listen_duration": 5,
     "ambient_noise_timeout": 0.2,
     "context_window": 1,
+    "notebook_db_path": "./test.db",
     "modules": [
         "default",
         "context",
         "variables",
-        "media",
-        "metadata"
+        "media"
     ],
-    "context": "You are an assistant and program controller. Speak to the client in friendly, casual manner. Do not acknowledge you are an AI. Please try to be concise and keep responses to two sentences or less.",
+    "context": "You are an assistant and program controller. Speak to the client in friendly, casual manner. Please try to be concise and keep responses to two sentences or less.",
     "minecraft_server_addr": "",
     "minecraft_api_addr": ""
     
