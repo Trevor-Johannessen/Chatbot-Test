@@ -155,6 +155,7 @@ class Interface:
 
     def say_canned(self, name):
         logging.info(f"Saying canned: {name}")
+        print(f"Saying: {name}")
         path=f"./audio/canned_lines/{name}.mp3"
         if not os.path.isfile(path):
             path="./audio/canned_lines/unknown_error.mp3"
