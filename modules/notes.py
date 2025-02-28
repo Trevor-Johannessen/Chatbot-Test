@@ -127,7 +127,7 @@ class Notes():
     create_notebook.variables={"notebook": "The name of the new notebook.", "description": "A string describing what the table is for", "tags": "A list of single-words that are relevant to the table."}
 
     def add_notes(self, notes: list, notebook: str):
-        """Adds a note to the specified notebook."""
+        """Inserts new notes to a specified notebook."""
         try:
             # Clean inputs
             notebook = notebook.replace(" ", "_")
@@ -147,6 +147,7 @@ class Notes():
             conn.close()
             print("Note inserted")
             self.interface.say_canned("note_inserted")
+            self.interface.clear_last_prompt()
         except Exception as e:
             logging.error(e)
     add_notes.variables={"notes": "A list of notes to insert.", "notebook": "The table/notebook to insert the notes into."}
@@ -165,6 +166,7 @@ class Notes():
             for note in all_notes:
                 next_context+=f"{note[0]}: {note[1]}\n"                
                 note_descs[note[0]] = note[1]
+            self.interface.clear_last_prompt()
             self.interface.prime()
             ids = json.loads(self.functions['prompt'](next_context))
             
@@ -172,7 +174,7 @@ class Notes():
             if len(ids) > 1:
                 self.interface.say_canned("multiple_notes_delete")
             else:
-                self.interface.say(f"Delete '{note_descs[id]}'?")
+                self.interface.say(f"Delete '{note_descs[ids[0]]}'?")
 
             # get response
             confirmation = self.functions['get_input']().split(" ")
@@ -259,12 +261,21 @@ class Notes():
         notebook = notebook.replace(" ", "_")
         notebook = notebook.lower()
         all_notes = [note[1] for note in self.__get_all_notes(notebook)]
-        next_prompt = "Below is a list of notes, use these to help answer the previous prompt.\n"
-        for i in range(0, len(all_notes)):
-            next_prompt += f"{i+1}. {all_notes[i]}\n"
+        next_prompt = ""
+        for entry in reversed(self.interface.context):
+            if entry['content'][0]['type'] == 'text':
+                next_prompt += self.interface.context[-1]['content'][0]['text']
+                break
+        next_prompt += "\nYou have previously called get_notes_in_notebook, below is the list of information in the relevant requested table:\n"
+        if len(all_notes) == 0:
+            next_prompt += "There are no notes in this notebook."
+        else:
+            for i in range(0, len(all_notes)):
+                next_prompt += f"{i+1}. {all_notes[i]}\n"
         self.interface.prime()
         message = self.functions['prompt'](next_prompt)
         if message:
             self.functions['say'](message)
+        self.interface.clear_last_prompt()
     get_notes_in_notebook.variables={"notebook": "The notebook to search in."}
 

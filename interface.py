@@ -31,7 +31,7 @@ class Interface:
         self._standby = False
         self.affirmations = ["yes", "yeah", "yep", "confirm", "affirmative", "correct", "accept"]
         self.quit_terms = ["cancel", "quit", "stop", "exit", "return", "no", "nope", "nada", "nah"]
-        self._context = []
+        self.context = []
         self.base_context = context
         self.names = names
         self._voice_id = voice_id
@@ -51,12 +51,12 @@ class Interface:
         self.say_canned("hello_world")
 
     def refresh_context(self, new_inital_context):
-        if self._context == None:
-            self._context = []
-        if len(self._context) > 0:
-            self._context[0] = {"role": "system", "content": [{"type": "text", "text": f"Your name is {self.names[0]}. {new_inital_context}"}]}
+        if self.context == None:
+            self.context = []
+        if len(self.context) > 0:
+            self.context[0] = {"role": "system", "content": [{"type": "text", "text": f"Your name is {self.names[0]}. {new_inital_context}"}]}
         else:
-            self._context = [{"role": "system", "content": [{"type": "text", "text": f"Your name is {self.names[0]}. {new_inital_context}"}]}]
+            self.context = [{"role": "system", "content": [{"type": "text", "text": f"Your name is {self.names[0]}. {new_inital_context}"}]}]
 
     def get_input(self, listen_duration, ambient_noise_timeout, audio_file=None):
         if self.mode == "voice" or audio_file:
@@ -83,26 +83,23 @@ class Interface:
         return text
 
     def parse_text(self, text):
-        try:
-            if text == None:
-                return
-            text = text.lower()
-            words = text.split(' ')
-            logging.info(words)
-            if "start conversation" in text:
-                logging.info("Starting conversation")
-                self._conversing = True
-                self.say_canned("starting_conversation")
-                return
-            elif "stop conversation" in text:
-                logging.info("Stopping conversation")
-                self._conversing = False
-                self.say_canned("stopping_conversation")
-            elif any(name in words for name in self.names):
-                self._standby = True
-            return text
-        except Exception as e:
-            logging.error(f"Listening exception: {e}")
+        if text == None:
+            return
+        text = text.lower()
+        words = text.split(' ')
+        logging.info(words)
+        if "start conversation" in text:
+            logging.info("Starting conversation")
+            self._conversing = True
+            self.say_canned("starting_conversation")
+            return
+        elif "stop conversation" in text:
+            logging.info("Stopping conversation")
+            self._conversing = False
+            self.say_canned("stopping_conversation")
+        elif any(name in words for name in self.names):
+            self._standby = True
+        return text
 
     def prime(self):
         self._standby = True
@@ -112,10 +109,10 @@ class Interface:
             return
         if self._standby:
             self._standby = False
-        self._context.append({"role": "user", "content": [{"type": "text", "text": message}]})
+        self.context.append({"role": "user", "content": [{"type": "text", "text": message}]})
         response = self._client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=self._context,
+            messages=self.context,
             tools=tools
         )
         return response
@@ -167,7 +164,7 @@ class Interface:
             self.say_canned("fail_not_exist")
             return
         with open(f"contexts/{file}", "r") as file:
-            self._context = json.loads(file.read())
+            self.context = json.loads(file.read())
 
     def save_context(self, filename):
         if not filename:
@@ -181,18 +178,24 @@ class Interface:
             if confirmation not in self._affirmations:
                 return
         with open(f"contexts/{filename}", "w+") as file:
-            file.write(json.dumps(self._context))
+            file.write(json.dumps(self.context))
         self.say_canned("file_saved")
 
     def add_context(self, new):
-        self._context.append(new)
+        self.context.append(new)
 
     def clear_context(self, sig=None, frame=None):
-        self._context = None
+        self.context = None
         self.refresh_context(self.base_context)
 
     def clear_recent_context(self, i=1):
-        self._context = self._context[:-i]
+        self.context = self.context[:-i]
+
+    def clear_last_prompt(self):
+        for i in range(len(self.context)-1, 0, -1):
+            if self.context[i]['role'] == 'user':
+                self.context = self.context[:i] + self.context[i+1:]
+                return
 
     def terminate(self, sig=None, frame=None):
         self.say_canned("goodbye")

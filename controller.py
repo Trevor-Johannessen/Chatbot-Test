@@ -132,7 +132,6 @@ class Controller:
         return self.tools
     
     def __call_tool(self, tool_call):
-        #self.interface.clear_recent_context(1) # raise this to 2 again if bot makes erroneous function calls
         args = json.loads(tool_call.function.arguments)
         for cls in self.classes:
             if hasattr(cls, tool_call.function.name):
