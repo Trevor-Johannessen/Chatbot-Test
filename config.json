@@ -1,25 +1,25 @@
 {
     "names": ["monika", "monica"],
-    "type": ["sentry", "webserver"],
+    "type": ["sentry"],
     "log_directory": "./logs",
     "web_server_port": "8989",
     "mode": "voice",
     "voice_id": "0yy6aROli0UmPMyExQ1S",
-    "voice_history_directory": "./audio/history",
+    "voice_directory": "./audio/monika",
     "web_server_request_history_directory": "./audio/webserver/history",
     "listen_duration": 5,
     "ambient_noise_timeout": 0.2,
-    "context_window": 1,
+    "context_window": 5,
     "notebook_db_path": "./test.db",
     "modules": [
         "default",
         "context",
         "variables",
-        "media"
+        "media",
+        "metadata",
+        "notes"
     ],
     "context": "You are an assistant and program controller. Speak to the client in friendly, casual manner. Please try to be concise and keep responses to two sentences or less.",
     "minecraft_server_addr": "",
     "minecraft_api_addr": ""
-    
-
 }

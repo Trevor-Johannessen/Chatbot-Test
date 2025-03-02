@@ -1,4 +1,6 @@
-audio
+audio/webserver
+audio/monika/history
 venv
 .env
 __pycache__
+config-test.json

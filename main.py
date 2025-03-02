@@ -4,12 +4,16 @@ from controller import Controller
 from dotenv import load_dotenv
 import json
 import os
+import sys
 
 load_dotenv()
 
-with open('config.json', 'r') as f:
-    config = json.load(f)
+config = 'config.json'
+if len(sys.argv) > 1:
+    config = sys.argv[1]
 
+with open(config, 'r') as f:
+    config = json.load(f)
     for index, item in enumerate(config['type']):
         if index < len(config['type']) - 1:
             pid = os.fork()

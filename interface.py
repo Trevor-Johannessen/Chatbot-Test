@@ -4,7 +4,7 @@ import os
 import io
 import json 
 import shutil
-import itertools
+import random
 from time import sleep
 from elevenlabs import play, save
 from elevenlabs.client import ElevenLabs
@@ -15,7 +15,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 class Interface:
-    def __init__(self, log_directory: str, names: list = ["monika", "monica"], mode: str = "voice", context_window: int = 5, context: str = "", history: str = "./", voice_id: str = "29vD33N1CtxCmqQRPOHJ"):
+    def __init__(self, log_directory: str, names: list = ["monika", "monica"], mode: str = "voice", context_window: int = 5, context: str = "", voice_directory: str = "./voice", voice_id: str = "29vD33N1CtxCmqQRPOHJ"):
         logging.basicConfig(filename="f{log_directory}/latest.log", level=logging.INFO)
 
         if len(names) == 0:
@@ -35,7 +35,7 @@ class Interface:
         self.base_context = context
         self.names = names
         self._voice_id = voice_id
-        self._history = history
+        self._voice_dir = voice_directory
         self.mode = mode
         self._last_message = datetime.now()
         self._client = OpenAI(
@@ -130,7 +130,7 @@ class Interface:
             output_format="mp3_44100_128"
         )
         time = datetime.now()
-        filename = f"{self._history}/{time}.mp3"
+        filename = f"{self._voice_dir}/history/{time}.mp3"
         filename_temp = f"./{time}.mp3"
         save(audio, filename_temp)
         with open(filename_temp, "rb") as f:
@@ -156,9 +156,16 @@ class Interface:
     def say_canned(self, name):
         logging.info(f"Saying canned: {name}")
         print(f"Saying: {name}")
-        path=f"./audio/canned_lines/{name}.mp3"
-        if not os.path.isfile(path):
+        dir_path=f"{self._voice_dir}/canned_lines/{name}"
+        lines = []
+        for filename in os.listdir(dir_path):
+            path = os.path.join(dir_path, filename)
+            if os.path.isfile(path):
+                lines.append(path)
+        if len(lines) <= 0:
             path="./audio/canned_lines/unknown_error.mp3"
+        else:
+            path = random.choice(lines)
         with open(path, "rb") as line:
             self.say(line)
 
