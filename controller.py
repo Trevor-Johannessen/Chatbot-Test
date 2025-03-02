@@ -28,7 +28,7 @@ class Controller:
             context=self.inital_context,
             mode=self.mode,
             context_window=config['context_window'],
-            history=config['voice_history_directory'],
+            voice_directory=config['voice_directory'],
             voice_id=config['voice_id']
         )
         

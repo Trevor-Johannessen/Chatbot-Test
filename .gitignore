@@ -2,3 +2,4 @@ audio
 venv
 .env
 __pycache__
+config-test.json
