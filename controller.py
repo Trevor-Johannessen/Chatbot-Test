@@ -4,12 +4,19 @@ import json
 from importlib import import_module
 from datetime import datetime
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
 class Controller:
     def __init__(self, config):
-        logging.basicConfig(filename=f"{config['log_directory']}/latest.log", level=logging.INFO)
+        log_directory = config['log_directory']
+        if not os.path.exists(log_directory):
+            os.makedirs(log_directory)
+        log_file = f"{log_directory}/latest.log"
+        if not os.path.exists(log_file):
+            open(log_file, 'w').close()
+        logging.basicConfig(filename=log_file, level=logging.INFO)
         self.names = [name.lower() for name in config['names']]
         self.listen_duration = config['listen_duration']
         self.ambient_noise_timeout = config['ambient_noise_timeout']
