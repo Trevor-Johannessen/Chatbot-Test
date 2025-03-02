@@ -79,7 +79,10 @@ class Interface:
             with audio as source:
                 audio = self._recognizer.record(audio)
         if audio:
-            text = self._recognizer.recognize_google(audio)
+            try: # Too much noise gives an Exception
+                text = self._recognizer.recognize_google(audio)
+            except:
+                pass
         return text
 
     def parse_text(self, text):

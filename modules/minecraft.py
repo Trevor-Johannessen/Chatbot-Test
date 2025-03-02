@@ -12,6 +12,7 @@ class Minecraft():
     def minecraft_kick_player(self, player: str = None, reason: str = ""): # should make this an enum for the function I want
         """Kicks a player off the minecraft server."""
         try:
+            self.interface.clear_recent_context()
             if not player:
                 raise Exception("specify_player")
             player=player.replace(" ", "")
@@ -26,6 +27,7 @@ class Minecraft():
     def minecraft_ban_player(self, player: str = None, reason: str = ""): # should make this an enum for the function I want
         """Bans a player from the minecraft server."""
         try:
+            self.interface.clear_recent_context()
             if not player:
                 raise Exception("specify_player")
             phonetic_name=player 
@@ -41,6 +43,7 @@ class Minecraft():
     def minecraft_pardon_player(self, player: str = None): # should make this an enum for the function I want
         """Pardons (unbans) a player on the minecraft server."""
         try:
+            self.interface.clear_recent_context()
             if not player:
                 raise Exception("specify_player")
             phonetic_name=player 
@@ -56,6 +59,7 @@ class Minecraft():
     def minecraft_mute_player(self, player: str = None): # should make this an enum for the function I want
         """Mutes a player on the minecraft server."""
         try:
+            self.interface.clear_recent_context()
             if not player:
                 raise Exception("specify_player")
             phonetic_name=player
@@ -71,6 +75,7 @@ class Minecraft():
     def minecraft_unmute_player(self, player: str = None): # should make this an enum for the function I want
         """Unmutes a player on the minecraft server."""
         try:
+            self.interface.clear_recent_context()
             if not player:
                 raise Exception("specify_player")
             phonetic_name=player 
@@ -86,6 +91,7 @@ class Minecraft():
     def minecraft_send_message(self, message: str = None): # should make this an enum for the function I want
         """Sends a message to the minecraft server."""
         try:
+            self.interface.clear_recent_context()
             if not message:
                 raise Exception("specify_message")
             response = requests.get(f"http://{self.api_address}/minecraft/say?message={message}")
@@ -101,6 +107,7 @@ class Minecraft():
         server = JavaServer.lookup("mc.sector-alpha.net")
         response = ""
         try:
+            self.interface.clear_recent_context()
             status = server.status()
             player_count = status.players.online
             player_list = [player.name for player in status.players.sample] if status.players.sample else []

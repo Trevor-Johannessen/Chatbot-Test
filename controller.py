@@ -137,6 +137,7 @@ class Controller:
             if hasattr(cls, tool_call.function.name):
                 func = getattr(cls, tool_call.function.name)
                 func(**args)
+                self.interface.clear_recent_context()
                 return
         self.interface.say_canned("call_fail")
         logger.error(f"Could not call function {tool_call.function.name} with args {args}")
