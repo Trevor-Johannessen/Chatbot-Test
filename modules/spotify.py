@@ -1,10 +1,17 @@
 import requests
+from spotipy import Spotipy
+from spotipy.oauth2 import SpotifyOAuth
+
 import os
 
 class Media():
     def __init__(self, config):
         self.interface = config['interface']
-        self.api_key = os.environ['SPOTIFY_API_KEY']
+        self.client_id = os.environ['SPOTIFY_CLIENT_ID']
+        self.client_secret = os.environ['SPOTIFY_CLIENT_SECRET']
+        self.redirect_uri = os.environ['SPOTIFY_REDIRECT_URI']
+        self.scopes = config['spotify_scopes']
+        self.client = Spotipy(auth_manager=SpotifyOAuth(scope=self.scopes))
 
     def change_volume(self, direction: str, delta: int = 1):
         pass
@@ -17,6 +24,10 @@ class Media():
         """Skips to the previous song in the queue."""
         pass
 
-    def toggle_song(self):
+    def pause_song(self):
         """Pauses or plays the current song."""
+        pass
+
+    def add_current_song_to_library(self):
+        """Adds the currently playing song to the user's library."""
         pass
