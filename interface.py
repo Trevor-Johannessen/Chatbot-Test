@@ -11,6 +11,8 @@ from elevenlabs.client import ElevenLabs
 from datetime import datetime
 from signal import signal, SIGINT, SIGTERM, SIGUSR1
 import logging
+import sys
+import select
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +33,8 @@ class Interface:
         self._standby = False
         self.affirmations = ["yes", "yeah", "yep", "confirm", "affirmative", "correct", "accept"]
         self.quit_terms = ["cancel", "quit", "stop", "exit", "return", "no", "nope", "nada", "nah"]
-        self.context = []
+        self.context = None
+        self.prompt_displayed = False
         self.base_context = context
         self.names = names
         self._voice_id = voice_id
@@ -50,23 +53,30 @@ class Interface:
         self.refresh_context(context)
         self.say_canned("hello_world")
 
-    def refresh_context(self, new_inital_context):
-        if self.context == None:
-            self.context = []
-        if len(self.context) > 0:
-            self.context[0] = {"role": "system", "content": [{"type": "text", "text": f"Your name is {self.names[0]}. {new_inital_context}"}]}
-        else:
-            self.context = [{"role": "system", "content": [{"type": "text", "text": f"Your name is {self.names[0]}. {new_inital_context}"}]}]
+    def refresh_context(self, new_inital_context=""):
+        if self.context == None or len(self.context) < 1:
+            self.context = [1]
+        self.context[0] = self.get_new_context(new_inital_context)[0]
+
+    def get_new_context(self, new_inital_context=""):
+        return [{"role": "system", "content": [{"type": "text", "text": f"Your name is {self.names[0]}. {new_inital_context}"}]}]
 
     def get_input(self, listen_duration, ambient_noise_timeout, audio_file=None):
         if self.mode == "voice" or audio_file:
             return self.get_audio(listen_duration, ambient_noise_timeout, audio_file=audio_file)
         elif self.mode == "text":
-            return self.get_text()
+            return self.get_text(listen_duration)
         return None
 
-    def get_text(self):
-            return input("Prompt: ")
+    def get_text(self, timeout: int = 10):
+            if not self.prompt_displayed:
+                print("Prompt: ", end='', flush=True)
+                self.prompt_displayed = True
+            ready, _, _ = select.select([sys.stdin], [], [], timeout)
+            if ready:
+                self.prompt_displayed = False
+                return sys.stdin.readline().strip()
+            return None
 
     def get_audio(self, listen_duration, ambient_noise_timeout, audio_file=None):
         text=None
@@ -107,15 +117,19 @@ class Interface:
     def prime(self):
         self._standby = True
 
-    def prompt(self, message, tools=None):
+    def prompt(self, message, tools=None, context=None):
         if not self._conversing and not self._standby:
             return
         if self._standby:
             self._standby = False
-        self.context.append({"role": "user", "content": [{"type": "text", "text": message}]})
+        if context:
+            context.append({"role": "user", "content": [{"type": "text", "text": message}]})
+        else:
+            self.context.append({"role": "user", "content": [{"type": "text", "text": message}]})
+            context = self.context
         response = self._client.chat.completions.create(
             model="gpt-4o-mini",
-            messages=self.context,
+            messages=context,
             tools=tools
         )
         return response

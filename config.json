@@ -1,5 +1,6 @@
 {
     "names": ["monika", "monica"],
+    "client_name": "YOUR_NAME_HERE",
     "type": ["sentry"],
     "log_directory": "./logs",
     "web_server_port": "8989",
@@ -17,9 +18,13 @@
         "variables",
         "media",
         "metadata",
-        "notes"
+        "notes",
+        "motd"
     ],
     "context": "You are an assistant and program controller. Speak to the client in friendly, casual manner. Please try to be concise and keep responses to two sentences or less.",
     "minecraft_server_addr": "",
-    "minecraft_api_addr": ""
+    "minecraft_api_addr": "",
+    "timezone": "US/Eastern",
+    "motd_time": "06:51",
+    "city": "New York"
 }
