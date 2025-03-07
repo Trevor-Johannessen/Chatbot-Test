@@ -58,6 +58,7 @@ class Controller:
 
         # Load modules
         self.classes = []
+        print(self.modules)
         for module_name in self.modules:
             module_name_literal = f"modules.{module_name}"
             module = import_module(module_name_literal)
@@ -68,6 +69,13 @@ class Controller:
                 self.classes.append(cls(config))
         self.get_module_contexts()
         self.tools = self.__bundle()
+
+        # Run post init hooks
+        config['classes'] = self.classes
+        for cls in self.classes:
+            print(cls)
+            if hasattr(cls, '__post_init'):
+                cls['__post_init'](config)
 
     def get_module_contexts(self):
         context=f"{self.inital_context}\n\n"
