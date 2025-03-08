@@ -24,5 +24,6 @@ class Default():
     def get_time(self):
         """Tells the current time."""
         self.interface.clear_recent_context()
-        current_time = datetime.now().strftime("%H:%M")
+        current_time = datetime.now().strftime("%I:%M %p")
+        current_time = current_time.lstrip('0').replace(':0', ':')
         self.interface.say(f"The current time is {current_time}.")
