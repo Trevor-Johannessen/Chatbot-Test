@@ -3,6 +3,17 @@ from pyowm import OWM
 import pytz
 import os
 
+"""
+TODO: SWITCH THIS TO USE ACCUWEATHER
+Two step process:
+1. Get the location ID using the locations api (uses city name and country code)
+2. Get the weather using the Forecast api (1-day forecast)
+
+https://developer.accuweather.com/accuweather-locations-api/apis
+
+Then, integrate with MOTD
+"""
+
 class Weather():
     def __init__(self, config):
         self.interface = config['interface']
@@ -16,7 +27,7 @@ class Weather():
         self.symbol = "F" if self.imperial else "C"
         
     def context(self, config):
-        return f"The user is currently in {config['city']}, {config['country']}."
+        return f"The user is currently in {config['city']}, {config['country_code']}."
 
     def _get_weather(self, city, state_code=None, country_code=None):
         """Gets the current weather in a given city."""

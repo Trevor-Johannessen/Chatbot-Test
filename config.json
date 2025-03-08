@@ -15,11 +15,12 @@
         "default",
         "context",
         "variables",
-        "media",
-        "metadata",
-        "notes"
+        "metadata"
     ],
     "context": "You are an assistant and program controller. Speak to the client in friendly, casual manner. Please try to be concise and keep responses to two sentences or less.",
     "minecraft_server_addr": "",
-    "minecraft_api_addr": ""
+    "minecraft_api_addr": "",
+    "use_imperial": true,
+    "city": "New York City",
+    "country_code": "US"
 }
