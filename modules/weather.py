@@ -2,6 +2,7 @@ from datetime import datetime
 from pyowm import OWM
 import pytz
 import os
+from text_transformers import TextTransformer
 
 """
 TODO: SWITCH THIS TO USE ACCUWEATHER
@@ -104,9 +105,6 @@ class Weather():
 
         message = self.functions['prompt'](prompt)
         if message:
-            message = message.replace("°C", " degrees celcius")
-            message = message.replace("°F", " degrees fahrenheit")
-            message = message.replace("km/h", "kilometers per hour")
-            message = message.replace("mph", " miles per hour")
+            message = TextTransformer.units(message)
             self.functions['say'](message)
     get_weather.variables={"city": "The name of the city to get the weather from.", "state_code": "The ISO 3166 state code for the city.", "country_code": "The ISO 3166 country code for the country the city is in."}
