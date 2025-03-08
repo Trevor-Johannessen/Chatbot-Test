@@ -1,12 +1,9 @@
-#!/root/monika/venv/bin/python
+#!/home/trevor-sys/monika/venv/bin/python3
 
 from controller import Controller
 from dotenv import load_dotenv
 import json
 import os
-import sys
-
-
 import argparse
 
 parser = argparse.ArgumentParser(description='Process configuration and environment files.')

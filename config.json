@@ -1,5 +1,6 @@
 {
     "names": ["monika", "monica"],
+    "client_name": "YOUR_NAME_HERE",
     "type": ["sentry"],
     "log_directory": "./logs",
     "web_server_port": "8989",
@@ -21,6 +22,8 @@
     "minecraft_server_addr": "",
     "minecraft_api_addr": "",
     "use_imperial": true,
-    "city": "New York City",
-    "country_code": "US"
+    "city": "New York",
+    "country_code": "US",
+    "timezone": "US/Eastern",
+    "motd_time": "06:51"
 }
