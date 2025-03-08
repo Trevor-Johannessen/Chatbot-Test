@@ -83,6 +83,7 @@ class Interface:
                 text = self._recognizer.recognize_google(audio)
             except:
                 pass
+        print(text)
         return text
 
     def parse_text(self, text):

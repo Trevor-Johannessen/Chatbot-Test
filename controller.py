@@ -28,7 +28,6 @@ class Controller:
         if "default" not in self.modules:
             logger.warning("Warning: 'default' module not included in modules.")
 
-        self.classes = []
         self.interface = Interface(
             log_directory=config['log_directory'],
             names=self.names,
@@ -45,6 +44,8 @@ class Controller:
             "say": self.say,
             "get_input": self.get_input
         }
+
+        self.classes = []
         for module_name in self.modules:
             module_name_literal = f"modules.{module_name}"
             module = import_module(module_name_literal)
@@ -55,6 +56,12 @@ class Controller:
                 self.classes.append(cls(config))
         self.refresh_context()
         self.tools = self.__bundle()
+
+        config['classes'] = self.classes
+
+        for cls in self.classes:
+            if hasattr(cls, '_post_init'):
+                cls._post_init(config)
 
     def refresh_context(self):
         context=f"{self.inital_context}\n\n"
@@ -110,7 +117,7 @@ class Controller:
         functions = []
         tools = []
         for cls in self.classes:
-            functions = [func for func in dir(cls) if callable(getattr(cls, func)) and '__' not in func and func not in ['context']]
+            functions = [func for func in dir(cls) if callable(getattr(cls, func)) and not func.startswith('_') and func not in ['context']]
             for func in functions:
                 func_object = getattr(cls, func)
                 tool={
