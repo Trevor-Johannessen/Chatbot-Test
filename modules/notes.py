@@ -264,7 +264,7 @@ class Notes():
         next_prompt = ""
         for entry in reversed(self.interface.context):
             if entry['content'][0]['type'] == 'text':
-                next_prompt += self.interface.context[-1]['content'][0]['text']
+                next_prompt += entry['content'][0]['text']
                 break
         next_prompt += "\nYou have previously called get_notes_in_notebook, below is the list of information in the relevant requested table:\n"
         if len(all_notes) == 0:
