@@ -7,8 +7,15 @@ import logging
 import os
 import schedule
 from time import sleep
+from enum import Enum
 
 logger = logging.getLogger(__name__)
+
+
+class HookType(Enum):
+    STARTUP = "_startup"
+    SHUTDOWN = "_shutdown"
+    CONTEXT = "_context"
 
 class Controller:
     def __init__(self, config):
@@ -23,8 +30,6 @@ class Controller:
 
         # Declare variables
         self.names = [name.lower() for name in config['names']]
-        self.listen_duration = config['listen_duration']
-        self.ambient_noise_timeout = config['ambient_noise_timeout']
         self.modules = [module.lower() for module in config['modules']]
         self.inital_context = config['context']
         self.mode = config['mode'].lower() if 'mode' in config else "voice"
@@ -38,23 +43,21 @@ class Controller:
         # Load interface
         self.interface = Interface(
             log_directory=config['log_directory'],
-            names=self.names,
-            context=self.inital_context,
             mode=self.mode,
             context_window=config['context_window'],
             voice_directory=config['voice_directory'],
-            voice_id=config['voice_id']
+            voice_id=config['voice_id'],
+            listen_duration=config['listen_duration'],
+            ambient_noise_timeout=config['ambient_noise_timeout']
         )
         
         # Set aditional info for modules
         config['interface'] = self.interface
         config['functions'] = {
             "prompt": self.prompt,
-            "say": self.say,
-            "get_input": self.get_input,
-            "get_new_context": self.get_new_context,
+            "new_context": self.new_context,
         }
-        config['enabled_modules'] = self.modules
+        self.config['enabled_modules'] = self.modules
 
         # Load modules
         self.classes = []
@@ -65,62 +68,56 @@ class Controller:
             for _, cls in classes:
                 if cls.__module__ != module_name_literal:
                     continue
-                self.classes.append(cls(config))
-        self.get_module_contexts()
+                self.classes.append(cls(self.config))
+
+        # Set up contexts
+        context = self.inital_context + "\n\n"
+        context += "\n\n".join(self._fire_hook(HookType.CONTEXT))
+        self.interface.refresh_context(context)
         self.tools = self.__bundle()
 
         # Run post init hooks
-        config['classes'] = self.classes
-        for cls in self.classes:
-            print(cls)
-            if hasattr(cls, '_post_init'):
-                cls._post_init(config)
+        self.config['classes'] = self.classes
+        self._fire_hook(HookType.STARTUP)
 
-    def get_module_contexts(self):
-        context=f"{self.inital_context}\n\n"
+    def _fire_hook(self, type: HookType):
+        outputs = []
         for cls in self.classes:
-            if hasattr(cls, 'context'):
-                context += f"{cls.context(self.config)}\n\n"
-        return context
+            if hasattr(cls, type.value):
+                out = getattr(cls, type.value)(self.config)
+                if out:
+                    outputs.append(out)
+        return outputs
 
-    def get_new_context(self, blank_context=False):
+    def new_context(self, blank_context=False):
         additional_context=""
         if not blank_context:
-            additional_context = self.get_module_contexts()
-        context = self.interface.get_new_context(additional_context)
+            additional_context = "\n\n".join(self._fire_hook(HookType.CONTEXT))
+        context = self.interface.new_context(additional_context)
         return context
 
-    def get_input(self, listen_duration=None, ambient_noise_timeout=None, audio_file=None):
-        if not listen_duration:
-            listen_duration = self.listen_duration
-        if not ambient_noise_timeout:
-            ambient_noise_timeout = self.ambient_noise_timeout
-        return self.interface.get_input(listen_duration, ambient_noise_timeout, audio_file=audio_file)
-
-    def prompt(self, text=None, audio_file=None, skip_context: bool = False, context: list = None, tools=None):
-        listen_duration = self.listen_duration
+    def prompt(self, text=None, context: list = None, tools=None):
         # Check jobs
         if not self._checking_jobs:
             self._checking_jobs = True
             schedule.run_pending()
             self._checking_jobs = False
             next_job = schedule.idle_seconds()
+            listen_duration = self.interface.listen_duration
             if next_job < listen_duration*2:
                 listen_duration = next_job
         if not text:
-            text = self.get_input(listen_duration=listen_duration, audio_file=audio_file)
-        # Parse text for metadata
-        message = self.interface.parse_text(text)
-        if not message:
             return
         # Manage context
-        additional_context = self.get_module_contexts()
+        additional_context = "\n\n".join(self._fire_hook(HookType.CONTEXT))
         self.interface.refresh_context(additional_context)
         # Check if custom tools are used
         if tools == None:
             tools = self.tools
+        if tools == []:
+            tools = None
         # Get response
-        response = self.interface.prompt(message, tools=tools, context=context)
+        response = self.interface.prompt(text, tools=tools, context=context)
         if not response:
             return
         for choice in response.choices:
@@ -128,14 +125,28 @@ class Controller:
                 for tool in choice.message.tool_calls:
                     self.__call_tool(tool)
             if choice.message.content:
-                if not skip_context:
-                    self.interface.add_context({"role": "assistant", "content": [{"type": "text", "text": choice.message.content}]})
                 return choice.message.content
-            
-    def say(self, message):
-        self.interface.say(message)
 
-    def __translate_types(self, type: type):
+    def converse(self, audio_file=None, silence=False):
+        text = self.interface.get_input(audio_file=audio_file)
+        if not text:
+            return
+        found_name=False
+        text_low = text.lower()
+        for name in self.names:
+            if name in text_low:
+                found_name=True
+                break
+        if not found_name:
+            return
+        response = self.prompt(text)
+        if response:
+            self.interface.add_context({"role": "assistant", "content": [{"type": "text", "text": response}]})
+            if not silence:
+                self.interface.say(response)
+            return response
+
+    def _translate_types(self, type: type):
         types = [x.strip() for x in str(type).split("|")]
         type_list = []
         for type in types:
@@ -157,7 +168,7 @@ class Controller:
         functions = []
         tools = []
         for cls in self.classes:
-            functions = [func for func in dir(cls) if callable(getattr(cls, func)) and not func.startswith('_') and func not in ['context']]
+            functions = [func for func in dir(cls) if callable(getattr(cls, func)) and not func.startswith('_')]
             for func in functions:
                 func_object = getattr(cls, func)
                 tool={
@@ -176,7 +187,7 @@ class Controller:
                 if len(signature(func_object).parameters) > 0:
                     for name, param in signature(func_object).parameters.items():
                         tool['function']['parameters']['properties'][name] = {
-                            'anyOf': self.__translate_types(param.annotation),
+                            'anyOf': self._translate_types(param.annotation),
                             'description': func_object.variables[name]
                         }
                         if param.default is _empty:

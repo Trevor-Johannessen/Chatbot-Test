@@ -17,28 +17,39 @@ import select
 logger = logging.getLogger(__name__)
 
 class Interface:
-    def __init__(self, log_directory: str, names: list = ["monika", "monica"], mode: str = "voice", context_window: int = 5, context: str = "", voice_directory: str = "./voice", voice_id: str = "29vD33N1CtxCmqQRPOHJ"):
+    def __init__(
+            self,
+            log_directory: str,
+			mode: str = "voice",
+			context_window: int = 5,
+			context: str = "",
+			voice_directory: str = "./voice",
+			voice_id: str = "29vD33N1CtxCmqQRPOHJ",
+            ambient_noise_timeout: float = 0.2,
+            listen_duration: float = 10,
+        ):
         logging.basicConfig(filename="f{log_directory}/latest.log", level=logging.INFO)
 
-        if len(names) == 0:
-            logging.critical("Names need at least one element")
-            raise "Interface Exception: Names needs at least one element."
-        
-        timer_pid = os.fork()
-        if timer_pid == 0:  # Child process
-            self.__timer(context_window)
+        if ambient_noise_timeout <= 0 or listen_duration <= 0:
+            logging.critical("Ambient noise timeout and listen duration must be positive, non-zero numbers.")
+            raise "Interface Exception: Ambient noise timeout and listen duration must be positive, non-zero numbers."
+
+        # Start sliding context window
+        if context_window > 0:
+            timer_pid = os.fork()
+            if timer_pid == 0:
+                self.__timer(context_window)
 
         self._recognizer = sr.Recognizer() 
-        self._conversing = False
-        self._standby = False
         self.affirmations = ["yes", "yeah", "yep", "confirm", "affirmative", "correct", "accept"]
         self.quit_terms = ["cancel", "quit", "stop", "exit", "return", "no", "nope", "nada", "nah"]
         self.context = None
         self.prompt_displayed = False
         self.base_context = context
-        self.names = names
         self._voice_id = voice_id
         self._voice_dir = voice_directory
+        self.ambient_noise_timeout = ambient_noise_timeout
+        self.listen_duration = listen_duration
         self.mode = mode
         self._last_message = datetime.now()
         self._client = OpenAI(
@@ -53,37 +64,52 @@ class Interface:
         self.refresh_context(context)
         self.say_canned("hello_world")
 
+    def new_context(self, new_inital_context=""):
+        return [{"role": "system", "content": [{"type": "text", "text": new_inital_context}]}]
+    
     def refresh_context(self, new_inital_context=""):
         if self.context == None or len(self.context) < 1:
             self.context = [1]
-        self.context[0] = self.get_new_context(new_inital_context)[0]
+        self.context[0] = self.new_context(new_inital_context)[0]
 
-    def get_new_context(self, new_inital_context=""):
-        return [{"role": "system", "content": [{"type": "text", "text": f"Your name is {self.names[0]}. {new_inital_context}"}]}]
+    def add_context(self, new):
+        self.context.append(new)
 
-    def get_input(self, listen_duration, ambient_noise_timeout, audio_file=None):
+    def clear_context(self, sig=None, frame=None):
+        self.context = None
+        self.refresh_context(self.base_context)
+    
+    def clear_recent_context(self, i=1):
+        self.context = self.context[:-i]
+    
+    def clear_last_prompt(self):
+        for i in range(len(self.context)-1, 0, -1):
+            if self.context[i]['role'] == 'user':
+                self.context = self.context[:i] + self.context[i+1:]
+                return
+
+    def get_input(self, audio_file=None):
         if self.mode == "voice" or audio_file:
-            return self.get_audio(listen_duration, ambient_noise_timeout, audio_file=audio_file)
+            return self._get_input_voice(audio_file=audio_file)
         elif self.mode == "text":
-            return self.get_text(listen_duration)
+            return self._get_input_text()
         return None
 
-    def get_text(self, timeout: int = 10):
+    def _get_input_text(self):
             if not self.prompt_displayed:
                 print("Prompt: ", end='', flush=True)
                 self.prompt_displayed = True
-            ready, _, _ = select.select([sys.stdin], [], [], timeout)
+            ready, _, _ = select.select([sys.stdin], [], [], 1)
             if ready:
                 self.prompt_displayed = False
                 return sys.stdin.readline().strip()
             return None
 
-    def get_audio(self, listen_duration, ambient_noise_timeout, audio_file=None):
-        text=None
+    def _get_input_voice(self, audio_file=None):
         if audio_file == None:
             with sr.Microphone() as source:
-                self._recognizer.adjust_for_ambient_noise(source, duration=ambient_noise_timeout)
-                audio = self._recognizer.listen(source, phrase_time_limit=listen_duration)
+                self._recognizer.adjust_for_ambient_noise(source, duration=self.ambient_noise_timeout)
+                audio = self._recognizer.listen(source, phrase_time_limit=self.listen_duration)
         elif audio_file:
             audio = sr.AudioFile(audio_file)
             with audio as source:
@@ -92,37 +118,11 @@ class Interface:
             try: # Too much noise gives an Exception
                 text = self._recognizer.recognize_google(audio)
             except:
-                pass
-        print(text)
+                text=None
+        logging.info(text)
         return text
-
-    def parse_text(self, text):
-        if text == None:
-            return
-        text = text.lower()
-        words = text.split(' ')
-        logging.info(words)
-        if "start conversation" in text:
-            logging.info("Starting conversation")
-            self._conversing = True
-            self.say_canned("starting_conversation")
-            return
-        elif "stop conversation" in text:
-            logging.info("Stopping conversation")
-            self._conversing = False
-            self.say_canned("stopping_conversation")
-        elif any(name in words for name in self.names):
-            self._standby = True
-        return text
-
-    def prime(self):
-        self._standby = True
 
     def prompt(self, message, tools=None, context=None):
-        if not self._conversing and not self._standby:
-            return
-        if self._standby:
-            self._standby = False
         if context:
             context.append({"role": "user", "content": [{"type": "text", "text": message}]})
         else:
@@ -146,12 +146,11 @@ class Interface:
         )
         time = datetime.now()
         filename = f"{self._voice_dir}/history/{time}.mp3"
-        filename_temp = f"./{time}.mp3"
-        save(audio, filename_temp)
-        with open(filename_temp, "rb") as f:
-            audio_data = f.read()
-        shutil.move(filename_temp, filename)
-        return audio_data, filename
+        pid = os.fork() # Copying stream is difficult, so I will copy everything
+        if pid == 0:
+            save(audio, filename)
+            exit(0)
+        return audio, filename
     
     def say(self, message):
         if not message:
@@ -162,15 +161,14 @@ class Interface:
                 play(message)
             return
         logging.info(f"Saying: {message}")
-        print(f"Saying: {message}")
-        if self.mode != "voice":
-            return
-        audio, _ = self.generate_voice(message)
-        play(audio)
+        if self.mode == "voice":
+            audio, _ = self.generate_voice(message)
+            play(audio)
+        else:
+            print(message)
 
     def say_canned(self, name):
         logging.info(f"Saying canned: {name}")
-        print(f"Saying: {name}")
         dir_path=f"{self._voice_dir}/canned_lines/{name}"
         lines = []
         for filename in os.listdir(dir_path):
@@ -205,22 +203,6 @@ class Interface:
         with open(f"contexts/{filename}", "w+") as file:
             file.write(json.dumps(self.context))
         self.say_canned("file_saved")
-
-    def add_context(self, new):
-        self.context.append(new)
-
-    def clear_context(self, sig=None, frame=None):
-        self.context = None
-        self.refresh_context(self.base_context)
-
-    def clear_recent_context(self, i=1):
-        self.context = self.context[:-i]
-
-    def clear_last_prompt(self):
-        for i in range(len(self.context)-1, 0, -1):
-            if self.context[i]['role'] == 'user':
-                self.context = self.context[:i] + self.context[i+1:]
-                return
 
     def terminate(self, sig=None, frame=None):
         self.say_canned("goodbye")

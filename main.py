@@ -23,8 +23,7 @@ with open(args.config, 'r') as f:
         if item.lower() == 'sentry':
             controller = Controller(config)
             while(True):
-                response = controller.prompt()
-                controller.say(response)
+                controller.converse()
         elif item.lower() == 'webserver':
             from webwrapper import WebWrapper
             server = WebWrapper(config)

@@ -27,7 +27,7 @@ class Weather():
             self.imperial = config['use_imperial']
         self.symbol = "F" if self.imperial else "C"
         
-    def context(self, config):
+    def _context(self, config):
         return f"The user is currently in {config['city']}, {config['country_code']}."
 
     def _get_weather(self, city, state_code=None, country_code=None):

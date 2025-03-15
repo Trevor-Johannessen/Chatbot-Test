@@ -4,7 +4,7 @@ class Variables():
     def __init__(self, config):
         self.interface = config['interface']
     
-    def context(self, config):
+    def _context(self, config):
         variables = [
             {
                 "name": "listen_duration",

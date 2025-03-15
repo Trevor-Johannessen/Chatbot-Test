@@ -53,7 +53,7 @@ class Notes():
         conn.commit()
         conn.close
     
-    def context(self, config):
+    def _context(self, config):
         context = "You can also create and manage notebooks. Notebooks are text databases you can use to jot down lists. If the user wants to save text, try to fit the request to the notebook functions. Below is a list of notebook names to use with the notebook functions:"
         try:
             # GET TABLES
@@ -145,9 +145,7 @@ class Notes():
             
             conn.commit()
             conn.close()
-            print("Note inserted")
             self.interface.say_canned("note_inserted")
-            self.interface.clear_last_prompt()
         except Exception as e:
             logging.error(e)
     add_notes.variables={"notes": "A list of notes to insert.", "notebook": "The table/notebook to insert the notes into."}
@@ -167,7 +165,7 @@ class Notes():
                 next_context+=f"{note[0]}: {note[1]}\n"                
                 note_descs[note[0]] = note[1]
             self.interface.clear_last_prompt()
-            self.interface.prime()
+            
             ids = json.loads(self.functions['prompt'](next_context))
             
             # ask the user if they want to delete note {note_text}
@@ -177,7 +175,7 @@ class Notes():
                 self.interface.say(f"Delete '{note_descs[ids[0]]}'?")
 
             # get response
-            confirmation = self.functions['get_input']().split(" ")
+            confirmation = self.interface.get_input().split(" ")
 
             # delete note if yes
             confirmation = confirmation[::-1] # reverse confirmations for cases like 'yeah, no' and 'no... yeah'
@@ -249,7 +247,7 @@ class Notes():
             next_prompt="Below is a list of tables and descriptions that match a relevant tag to the previous prompt. Call find_notes_in_notebook with the table that most closely matches to what the user wants:"
             for table in tables:
                 next_prompt += f"{table[0]} - {table[1]}"
-            self.interface.prime()
+            
             self.functions['prompt'](next_prompt)
         except Exception as e:
             logging.error(e)
@@ -272,7 +270,7 @@ class Notes():
         else:
             for i in range(0, len(all_notes)):
                 next_prompt += f"{i+1}. {all_notes[i]}\n"
-        self.interface.prime()
+        
         message = self.functions['prompt'](next_prompt)
         if message:
             self.functions['say'](message)

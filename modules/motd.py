@@ -15,7 +15,7 @@ class Motd():
 
         schedule.every().day.at(config['motd_time'], config['timezone']).do(self.__say_motd)
 
-    def _post_init(self, config):
+    def _startup(self, config):
         
         for cls in config['classes']:
             if isinstance(cls, Weather):
@@ -25,7 +25,7 @@ class Motd():
 
 
     def __say_motd(self):
-        context = self.functions['get_new_context']()
+        context = self.functions['new_context']()
 
         # Get neccesary information
         current_time = datetime.now().strftime("%B %d, %Y, %I:%M %p")
@@ -55,8 +55,8 @@ class Motd():
         if notes:
             prompt+=f"Summarize the items they have on their todo list for today (seen below), if there are no items tell them they have nothing on their todo list for today. "
             footer+=notes
-        self.interface.prime()
-        message = self.functions['prompt'](text=f"{prompt}\n\n\n{footer}", context=context, skip_context=True, tools=[])
+        
+        message = self.functions['prompt'](text=f"{prompt}\n\n\n{footer}", context=context, tools=[])
         if message:
             message = TextTransformer.units(message)
             self.interface.say(message)
