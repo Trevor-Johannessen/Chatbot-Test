@@ -2,7 +2,7 @@ import schedule
 from datetime import datetime
 from modules.weather import Weather
 from modules.notes import Notes
-import pytz
+from text_transformers import TextTransformer
 
 class Motd():
     def __init__(self, config):
@@ -31,9 +31,9 @@ class Motd():
         current_time = datetime.now().strftime("%B %d, %Y, %I:%M %p")
         if self.city and self.weather:
             # Get information about the weather
-            weather = self._get_weather(self.city, self.country_code)
-            weather_description = self._get_weather_description(weather)
-            weather_prompt += "\n\nBelow is a list of attributes about the weather which can help answer this prompt."
+            weather = self.weather._get_weather(self.city, self.country)
+            weather_description = self.weather._get_weather_description(weather)
+            weather_prompt = "\n\nBelow is a list of attributes about the weather which can help answer this prompt."
             for var in weather_description:
                 weather_prompt+=f"\n{var}"
             
@@ -58,6 +58,7 @@ class Motd():
         self.interface.prime()
         message = self.functions['prompt'](text=f"{prompt}\n\n\n{footer}", context=context, skip_context=True, tools=[])
         if message:
+            message = TextTransformer.units(message)
             self.interface.say(message)
 
     def read_motd(self):
