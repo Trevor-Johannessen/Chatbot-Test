@@ -146,11 +146,16 @@ class Interface:
         )
         time = datetime.now()
         filename = f"{self._voice_dir}/history/{time}.mp3"
-        pid = os.fork() # Copying stream is difficult, so I will copy everything
-        if pid == 0:
-            save(audio, filename)
+        filename_temp = f"./{time}.mp3"
+        # You HAVE to save the file first beacuase cloning the stream will cause two API calls
+        save(audio, filename_temp)
+        with open(filename_temp, "rb") as f:
+            audio_data = f.read()
+        pid = os.fork()
+        if pid == 0:  # Child process
+            shutil.move(filename_temp, filename)
             exit(0)
-        return audio, filename
+        return audio_data, filename
     
     def say(self, message):
         if not message:
