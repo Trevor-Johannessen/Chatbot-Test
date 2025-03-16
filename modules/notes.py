@@ -170,7 +170,7 @@ class Notes():
             
             # ask the user if they want to delete note {note_text}
             if len(ids) > 1:
-                self.interface.say_canned("multiple_notes_delete")
+                self.interface.say_canned("note_delete_multiple")
             else:
                 self.interface.say(f"Delete '{note_descs[ids[0]]}'?")
 
@@ -202,7 +202,8 @@ class Notes():
             cursor = conn.cursor()
             cursor.execute("SELECT notebook FROM notebooks WHERE notebook = ?", (notebook,))
             if not cursor.fetchone():
-                raise Exception("notebook_not_exist")
+                self.interface.say_canned("notebook_not_exist")
+                return
             cursor.execute(f"DELETE FROM {notebook} WHERE id = ?", (note_id,))
             
             conn.commit()
