@@ -35,6 +35,7 @@ class Controller:
         self.mode = config['mode'].lower() if 'mode' in config else "voice"
         self.config = config
         self._checking_jobs = False
+        self.conversing = False
 
         # Warnings
         if "default" not in self.modules:
@@ -56,6 +57,8 @@ class Controller:
         config['functions'] = {
             "prompt": self.prompt,
             "new_context": self.new_context,
+            "start_conversation": self._start_conversation,
+            "stop_conversation": self._stop_conversation,
         }
         self.config['enabled_modules'] = self.modules
 
@@ -137,7 +140,7 @@ class Controller:
             if name in text_low:
                 found_name=True
                 break
-        if not found_name:
+        if not found_name and not self.conversing:
             return
         response = self.prompt(text)
         if response:
@@ -145,6 +148,12 @@ class Controller:
             if not silence:
                 self.interface.say(response)
             return response
+        
+    def _start_conversation(self):
+        self.conversing = True
+
+    def _stop_conversation(self):
+        self.conversing = False
 
     def _translate_types(self, type: type):
         types = [x.strip() for x in str(type).split("|")]
