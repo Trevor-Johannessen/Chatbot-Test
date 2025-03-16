@@ -35,7 +35,8 @@ class Notes():
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     table_name TEXT,
                     attr TEXT,
-                    value TEXT
+                    value TEXT,
+                    archived INTEGER
                 )
             ''')
         conn.commit()
@@ -85,6 +86,32 @@ class Notes():
             logging.error(e)
             return context
 
+    def _create_notebook(self, notebook: str, description: str, tags: list):
+        conn = sqlite3.connect(self.notebook_path)
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT notebook FROM notebooks WHERE notebook = ?", (notebook,))
+        if cursor.fetchone():
+            return False
+
+        cursor.execute(f'''
+            CREATE TABLE IF NOT EXISTS {notebook} (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                note TEXT
+            )
+        ''')
+        cursor.execute(f"INSERT INTO notebooks (notebook) VALUES ('{notebook}')")
+
+        for tag in tags:
+            cursor.execute(f"INSERT INTO metadata (table_name, attr, value, archived) VALUES (?, 'tag', ?, 0)", (notebook, tag,))
+            cursor.execute("INSERT OR IGNORE INTO tags (tag) VALUES (?)", (tag,))
+        cursor.execute(f"INSERT INTO metadata (table_name, attr, value, archived) VALUES (?, 'desc', ?, 0)", (notebook, description,))
+
+        conn.commit()
+        conn.close()
+        return True
+
     def create_notebook(self, notebook: str, description: str, tags: list):
         """Creates a notebook with the specified name."""
         try:
@@ -94,37 +121,25 @@ class Notes():
             if isinstance(tags, str):
                 tags = [tag.strip() for tag in tags.split(',')]
 
-            conn = sqlite3.connect(self.notebook_path)
-            cursor = conn.cursor()
-
-            cursor.execute("SELECT notebook FROM notebooks WHERE notebook = ?", (notebook,))
-            if cursor.fetchone():
+            if self._create_notebook(notebook, description, tags):
+                self.interface.say_canned("notebook_create_failed")
                 return
-
-            print("Creating notebook")
-            cursor.execute(f'''
-                CREATE TABLE IF NOT EXISTS {notebook} (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    note TEXT
-                )
-            ''')
-
-            print("Inserting notebook into notebooks table")
-            cursor.execute(f"INSERT INTO notebooks (notebook) VALUES ('{notebook}')")
-            
-            print("Inserting attributes into metadata table")
-            for tag in tags:
-                cursor.execute(f"INSERT INTO metadata (table_name, attr, value) VALUES (?, 'tag', ?)", (notebook, tag,))
-                cursor.execute("INSERT OR IGNORE INTO tags (tag) VALUES (?)", (tag,))
-            cursor.execute(f"INSERT INTO metadata (table_name, attr, value) VALUES (?, 'desc', ?)", (notebook, description,))
-
-            conn.commit()
-            conn.close()
             self.interface.say_canned("notebook_created")
         except Exception as e:
             logging.error(e)
     create_notebook.variables={"notebook": "The name of the new notebook.", "description": "A string describing what the table is for", "tags": "A list of single-words that are relevant to the table."}
+
+    def _add_notes(self, notes: list, notebook: str):
+            conn = sqlite3.connect(self.notebook_path)
+            cursor = conn.cursor()
+            cursor.execute("SELECT notebook FROM notebooks WHERE notebook = ?", (notebook,))
+            if not cursor.fetchone():
+                return False
+            for note in notes:
+                cursor.execute(f"INSERT INTO {notebook} (note) VALUES (?)", (note,))
+            
+            conn.commit()
+            conn.close()
 
     def add_notes(self, notes: list, notebook: str):
         """Inserts new notes to a specified notebook."""
@@ -135,16 +150,9 @@ class Notes():
             if isinstance(notes, str):
                 notes = [note.strip() for note in notes.split(',')]
 
-            conn = sqlite3.connect(self.notebook_path)
-            cursor = conn.cursor()
-            cursor.execute("SELECT notebook FROM notebooks WHERE notebook = ?", (notebook,))
-            if not cursor.fetchone():
-                raise Exception("notebook_not_exist")
-            for note in notes:
-                cursor.execute(f"INSERT INTO {notebook} (note) VALUES (?)", (note,))
-            
-            conn.commit()
-            conn.close()
+            if not self._add_notes(notes, notebook):
+                self.interface.say_canned('notebook_not_exist')
+                return
             self.interface.say_canned("note_inserted")
         except Exception as e:
             logging.error(e)
@@ -233,14 +241,14 @@ class Notes():
             # Find tables that contain any of the tags in the metadata table
 
             # Get tables that match tag
-            query = "SELECT table_name FROM metadata WHERE value IN ({}) AND attr='tag'".format(','.join('?' for _ in tags))
+            query = "SELECT table_name FROM metadata WHERE value IN ({}) AND archived=0 AND attr='tag'".format(','.join('?' for _ in tags))
             cursor.execute(query, tags)
             tables = cursor.fetchall()
             tables = [table[0] for table in tables]
             tables = list(set(tables))
 
             # Get description to pair with table
-            query = f"SELECT table_name, value FROM metadata WHERE table_name IN ({','.join('?' for _ in tables)}) AND attr='desc'"
+            query = f"SELECT table_name, value FROM metadata WHERE table_name IN ({','.join('?' for _ in tables)}) AND attr='desc' AND archived=0"
             cursor.execute(query, tables)
             tables = cursor.fetchall()
             tables = [(table[0], table[1]) for table in tables]
@@ -274,7 +282,18 @@ class Notes():
         
         message = self.functions['prompt'](next_prompt)
         if message:
-            self.functions['say'](message)
+            self.interface.say(message)
         self.interface.clear_last_prompt()
     get_notes_in_notebook.variables={"notebook": "The notebook to search in."}
 
+    def add_to_todo_list(self, day: int, month: int, year: int, items: list[str]):
+        date = f"{year}_{month}_{day}"
+        notebook_name = f"todo_{date}"
+        self._create_notebook(notebook_name, f"A todo list for {date}", ["todo"])
+        self._add_notes(items, notebook_name)
+    add_to_todo_list.variables={"day": "A numerical day of the month.", "month": "A numerical month.", "year": "A numerical year.", "items": "A list of items to add to the todo list."}
+
+    def get_todo_list(self, day: int, month: int, year: int):
+        """Gets the items in a todo list for a given date."""
+        self.get_notes_in_notebook(f"todo_{year}_{month}_{day}")
+    get_todo_list.variables={"day": "A numerical day of the month.", "month": "A numerical month.", "year": "A numerical year."}
