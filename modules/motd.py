@@ -21,15 +21,17 @@ class Motd():
             if isinstance(cls, Weather):
                 self.weather = cls
             elif isinstance(cls, Notes):
-                pass
+                self.notes = cls
 
 
     def __say_motd(self):
         context = self.functions['new_context']()
 
         # Get neccesary information
-        current_time = datetime.now().strftime("%B %d, %Y, %I:%M %p")
-        if self.city and self.weather:
+        today = datetime.now()
+        current_time = today.strftime("%I:%M %p")
+        current_date = today.strftime("%B %d, %Y")
+        if getattr(self, 'city') and getattr(self, 'weather'):
             # Get information about the weather
             weather = self.weather._get_weather(self.city, self.country)
             weather_description = self.weather._get_weather_description(weather)
@@ -38,20 +40,26 @@ class Motd():
                 weather_prompt+=f"\n{var}"
             
         notes = None
-        if "notes" in self.modules:
+        if getattr(self, 'notes'):
+            todays_notebook = self.notes._get_todo_name(today.day, today.month, today.year)
+            all_notes = [note[1] for note in self.notes._get_all_notes(todays_notebook)]
             notes = """
-                Below is today's todo list:
+                Below is today's todo list:\n
             """
+            for note in all_notes:
+                notes += f"{note}\n"
 
         # Built prompt
         prompt = ""
         footer=""
         if self.client_name:
-            prompt+=f"Greet the user (named {self.client_name}) a good morning. "
+            current_hour = datetime.now().hour
+            time_of_day = "morning" if current_hour < 12 else "afternoon" if current_hour < 17 else "evening"
+            prompt+=f"Greet the user a good {time_of_day}. "
         if weather_prompt:
             prompt+=f"Tell them about the weather in {self.city} for today.\n"
             footer+=f"{weather_prompt}\n\n"
-        prompt+=f"Tell them the date and time in that order (it is currently {current_time}). "
+        prompt+=f"Tell them the time and date in that order (it is currently {current_time}, {current_date}). "
         if notes:
             prompt+=f"Summarize the items they have on their todo list for today (seen below), if there are no items tell them they have nothing on their todo list for today. "
             footer+=notes

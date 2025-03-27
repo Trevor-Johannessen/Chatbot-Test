@@ -11,11 +11,11 @@ class Notes():
         self.interface = config['interface']
         self.functions = config['functions']
         self.max_notes = config['max_notes'] if 'max_notes' in config else 10
-        self.__create_metadata()
-        self.__create_notebooks()
-        self.__create_tags()
+        self._create_metadata()
+        self._create_notebooks()
+        self._create_tags()
 
-    def __create_notebooks(self):
+    def _create_notebooks(self):
         conn = sqlite3.connect(self.notebook_path)
         cursor = conn.cursor()
         cursor.execute('''
@@ -27,7 +27,7 @@ class Notes():
         conn.commit()
         conn.close
     
-    def __create_metadata(self):
+    def _create_metadata(self):
         conn = sqlite3.connect(self.notebook_path)
         cursor = conn.cursor()
         cursor.execute(f'''
@@ -42,7 +42,7 @@ class Notes():
         conn.commit()
         conn.close
 
-    def __create_tags(self):
+    def _create_tags(self):
         conn = sqlite3.connect(self.notebook_path)
         cursor = conn.cursor()
         cursor.execute(f'''
@@ -166,7 +166,7 @@ class Notes():
                 note_desc = [desc.strip() for desc in note_desc.split(',')]
 
             # Give ai all notes from table with ids and tell it to return the id most similar to description
-            all_notes = self.__get_all_notes(notebook)
+            all_notes = self._get_all_notes(notebook)
             next_context = f"Below is a list of notes with their corresponding id. Respond with a json list of ids that most fits the description of \"{note_desc}\". Only respond with the raw json list, no words or formatting.\n"
             note_descs = {}
             for note in all_notes:
@@ -190,7 +190,7 @@ class Notes():
             for word in confirmation:
                 if word in self.interface.affirmations:
                     for id in ids:
-                        self.__delete_note(note_id=id, notebook=notebook)
+                        self._delete_note(note_id=id, notebook=notebook)
                     self.interface.say_canned("note_deleted")
                     break
                 elif word in self.interface.quit_terms:
@@ -200,7 +200,7 @@ class Notes():
             self.interface.say_canned(e)
     delete_note.variables={"note_desc": "The list of descriptions describing each note to delete.", "notebook": "The notebook to delete a note from."}
 
-    def __delete_note(self, note_id: int, notebook: str):
+    def _delete_note(self, note_id: int, notebook: str):
         try:
             # Clean inputs
             notebook = notebook.replace(" ", "_")
@@ -220,7 +220,7 @@ class Notes():
         except Exception as e:
             logging.error(e)
 
-    def __get_all_notes(self, notebook: str):
+    def _get_all_notes(self, notebook: str):
         try:
             conn = sqlite3.connect(self.notebook_path)
             cursor = conn.cursor()
@@ -267,7 +267,7 @@ class Notes():
         """Searches and displays notes to a used based on previous context."""
         notebook = notebook.replace(" ", "_")
         notebook = notebook.lower()
-        all_notes = [note[1] for note in self.__get_all_notes(notebook)]
+        all_notes = [note[1] for note in self._get_all_notes(notebook)]
         next_prompt = ""
         for entry in reversed(self.interface.context):
             if entry['content'][0]['type'] == 'text':
@@ -286,14 +286,23 @@ class Notes():
         self.interface.clear_last_prompt()
     get_notes_in_notebook.variables={"notebook": "The notebook to search in."}
 
+    def _get_todo_name(self, day: int, month: int, year: int):
+        if year < 100:
+            year+=2000
+        if month < 10:
+            month = f'0{month}'
+        if day < 10:
+            day = f'0{day}'
+        return f"todo_{year}_{month}_{day}"
+
     def add_to_todo_list(self, day: int, month: int, year: int, items: list[str]):
-        date = f"{year}_{month}_{day}"
-        notebook_name = f"todo_{date}"
-        self._create_notebook(notebook_name, f"A todo list for {date}", ["todo"])
+        notebook_name = self._get_todo_name(day, month, year)
+        self._create_notebook(notebook_name, f"A todo list for {year}-{month}-{day}", ["todo"])
         self._add_notes(items, notebook_name)
     add_to_todo_list.variables={"day": "A numerical day of the month.", "month": "A numerical month.", "year": "A numerical year.", "items": "A list of items to add to the todo list."}
 
     def get_todo_list(self, day: int, month: int, year: int):
         """Gets the items in a todo list for a given date."""
-        self.get_notes_in_notebook(f"todo_{year}_{month}_{day}")
+        notebook_name = self._get_todo_name(day, month, year)
+        self.get_notes_in_notebook(notebook_name)
     get_todo_list.variables={"day": "A numerical day of the month.", "month": "A numerical month.", "year": "A numerical year."}
